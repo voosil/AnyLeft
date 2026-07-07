@@ -1,0 +1,89 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+}
+
+body {
+  font-family: "Schibsted Grotesk", "Noto Sans SC", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Transparent so the Tauri window's rounded card + OS shadow show through. */
+  background: transparent;
+  color: #33302a;
+  /* Native-app feel: no text selection or i-beam cursor by default. */
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+a {
+  color: #274a80;
+  text-decoration: none;
+}
+a:hover {
+  color: #c96442;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  user-select: text;
+}
+
+button {
+  font-family: inherit;
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 48, 42, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

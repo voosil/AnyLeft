@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AnyLeft",
+  "version": "0.1.0",
+  "identifier": "com.voosil.anyleft",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "label": "panel",
+        "title": "AnyLeft",
+        "url": "index.html",
+        "width": 340,
+        "height": 360,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "backgroundColor": "#00000000",
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false,
+        "shadow": true,
+        "acceptFirstMouse": true
+      },
+      {
+        "label": "settings",
+        "title": "AnyLeft · 设置",
+        "url": "index.html?window=settings",
+        "width": 560,
+        "height": 690,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "backgroundColor": "#00000000",
+        "center": true,
+        "visible": false,
+        "shadow": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "Track LLM subscription quota usage from your menu bar.",
+    "longDescription": "AnyLeft 剩了么 is a macOS menu-bar app that tracks how much of your subscription quota is left across LLM providers (Claude, ChatGPT, GLM, Kimi, MiniMax and more).",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {}
+}

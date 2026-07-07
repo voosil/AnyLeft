@@ -1,0 +1,144 @@
+//! The menu-bar tray icon: its menu, its live percentage title, and the
+//! show/hide logic for the panel dropdown.
+
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow,
+};
+
+use crate::state::AppState;
+use crate::windows::{self, PANEL_LABEL};
+
+pub const TRAY_ID: &str = "main";
+
+/// Fallbacks used only when the OS can't report the real panel/monitor size.
+const FALLBACK_PANEL: PhysicalSize<u32> = PhysicalSize::new(360, 468);
+const EDGE_MARGIN: f64 = 8.0;
+const MENU_BAR_HEIGHT: f64 = 30.0;
+
+/// Build the tray icon with its context menu and click handler.
+pub fn create(app: &AppHandle) -> tauri::Result<()> {
+    let settings_item = MenuItem::with_id(app, "settings", "设置…", true, Some("Cmd+,"))?;
+    let refresh_item = MenuItem::with_id(app, "refresh", "刷新用量", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "退出 AnyLeft", true, Some("Cmd+Q"))?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &settings_item,
+            &refresh_item,
+            &PredefinedMenuItem::separator(app)?,
+            &quit_item,
+        ],
+    )?;
+
+    TrayIconBuilder::with_id(TRAY_ID)
+        .icon(app.default_window_icon().expect("bundled icon").clone())
+        .icon_as_template(true)
+        .tooltip("AnyLeft 剩了么")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "settings" => {
+                let _ = windows::show_settings(app);
+            }
+            "refresh" => refresh_tray(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                position,
+                ..
+            } = event
+            {
+                toggle_panel(tray.app_handle(), Some(position));
+            }
+        })
+        .build(app)?;
+
+    Ok(())
+}
+
+/// Recompute the menu-bar title from current settings + remaining quota. Fire-and-forget:
+/// the dashboard may hit the network, so it runs on the async runtime and also
+/// warms the usage cache for the next panel open.
+pub fn refresh_tray(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let show = {
+            let state = app.state::<AppState>();
+            state.settings_snapshot().preferences.menubar_percent
+        };
+
+        let title: Option<String> = if show {
+            let dashboard = {
+                let state = app.state::<AppState>();
+                state.dashboard(false).await
+            };
+            dashboard
+                .ok()
+                .and_then(|d| d.highest)
+                .map(|highest| format!("◐ {}%", 100u8.saturating_sub(highest)))
+        } else {
+            None
+        };
+
+        if let Some(tray) = app.tray_by_id(TRAY_ID) {
+            let _ = tray.set_title(title);
+        }
+    });
+}
+
+/// Show the panel if hidden, hide it if visible. `anchor` is the click point,
+/// used to place the dropdown under the tray icon.
+pub fn toggle_panel(app: &AppHandle, anchor: Option<PhysicalPosition<f64>>) {
+    let Some(window) = app.get_webview_window(PANEL_LABEL) else {
+        return;
+    };
+    if window.is_visible().unwrap_or(false) {
+        let _ = window.hide();
+    } else {
+        position_panel(&window, anchor);
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Position the panel under the tray icon (or top-right as a fallback), clamped
+/// to the monitor that hosts the menu bar.
+fn position_panel(window: &WebviewWindow, anchor: Option<PhysicalPosition<f64>>) {
+    let size = window.outer_size().unwrap_or(FALLBACK_PANEL);
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten());
+
+    let (mon_x, mon_y, mon_w, scale) = match monitor.as_ref() {
+        Some(m) => (
+            m.position().x as f64,
+            m.position().y as f64,
+            m.size().width as f64,
+            m.scale_factor(),
+        ),
+        None => (0.0, 0.0, 1440.0, 1.0),
+    };
+
+    let margin = EDGE_MARGIN * scale;
+    let (mut x, y) = match anchor {
+        Some(p) => (p.x - size.width as f64 / 2.0, p.y + margin),
+        None => (
+            mon_x + mon_w - size.width as f64 - margin,
+            mon_y + MENU_BAR_HEIGHT * scale,
+        ),
+    };
+
+    let min_x = mon_x + margin;
+    let max_x = mon_x + mon_w - size.width as f64 - margin;
+    x = x.clamp(min_x, max_x.max(min_x));
+
+    let _ = window.set_position(PhysicalPosition::new(x.round(), y.round()));
+}
