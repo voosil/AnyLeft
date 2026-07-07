@@ -27,7 +27,7 @@ export const color = {
   link: "#274A80",
 
   // Surfaces
-  cardGlass: "rgba(247,242,231,.95)",
+  cardGlass: "rgba(247,242,231)",
   card: "#F7F2E7",
   inner: "#FCF9F2",
   titlebarTop: "#EFE8D9",

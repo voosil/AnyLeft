@@ -32,13 +32,14 @@ fn settings_path(app: &tauri::App) -> Result<PathBuf, Box<dyn std::error::Error>
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_nspanel::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
                     if event.state == ShortcutState::Pressed {
-                        tray::toggle_panel(app, None);
+                        tray::toggle_panel(app);
                     }
                 })
                 .build(),
@@ -62,14 +63,10 @@ pub fn run() {
                 eprintln!("[anyleft] could not register panel shortcut: {err}");
             }
 
-            // Panel dismisses itself when it loses focus (click-outside to close).
+            // Promote the panel to a non-activating NSPanel so it can float over
+            // another app's full-screen Space; this also wires click-outside-to-close.
             if let Some(panel) = app.get_webview_window(PANEL_LABEL) {
-                let handle = panel.clone();
-                panel.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
-                        let _ = handle.hide();
-                    }
-                });
+                windows::configure_overlay_panel(app.handle(), &panel)?;
             }
 
             // Closing the settings window hides it instead of tearing it down.

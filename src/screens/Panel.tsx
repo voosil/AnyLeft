@@ -42,12 +42,11 @@ export function Panel() {
       style={{
         animation: "panelIn .5s cubic-bezier(.2,.85,.25,1) both",
         background: color.cardGlass,
-        backdropFilter: "blur(24px) saturate(1.3)",
-        WebkitBackdropFilter: "blur(24px) saturate(1.3)",
+        // backdropFilter: "blur(24px) saturate(1.3)",
+        // WebkitBackdropFilter: "blur(24px) saturate(1.3)",
         border: `1px solid rgba(255,255,255,.62)`,
         borderRadius: 15,
-        boxShadow:
-          "0 24px 50px -16px rgba(40,28,10,.55), inset 0 1px 0 rgba(255,255,255,.75)",
+        boxShadow: "0 24px 50px -16px rgba(40,28,10,.55), inset 0 1px 0 rgba(255,255,255,.75)",
         padding: "13px 13px 8px",
         width: 340,
       }}
@@ -74,8 +73,8 @@ export function Panel() {
             color: color.faint,
           }}
         >
-          <span style={{ width: PCT_COL, textAlign: "right" }}>5H余</span>
-          <span style={{ width: PCT_COL, textAlign: "right" }}>周余</span>
+          <span style={{ width: PCT_COL, textAlign: "right" }}>5H</span>
+          <span style={{ width: PCT_COL, textAlign: "right" }}>Week</span>
         </div>
       </header>
 
@@ -155,8 +154,12 @@ function PanelSkeleton() {
               maxWidth: 120,
             }}
           />
-          <span style={{ width: PCT_COL, height: 10, borderRadius: 4, background: color.hairSoft }} />
-          <span style={{ width: PCT_COL, height: 10, borderRadius: 4, background: color.hairSoft }} />
+          <span
+            style={{ width: PCT_COL, height: 10, borderRadius: 4, background: color.hairSoft }}
+          />
+          <span
+            style={{ width: PCT_COL, height: 10, borderRadius: 4, background: color.hairSoft }}
+          />
         </div>
       ))}
     </>
