@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Menu-bar template icon for AnyLeft, derived from the "1a Half gauge · 半月表"
+  direction in `AnyLeft Icons.dc.html` (symbol id `ic-a`).
+
+  macOS template images must be pure black with an alpha channel — the system
+  recolours them to match the menu-bar foreground. We therefore strip the
+  ic-a frame (parchment fill, gauge outline, gloss) and keep only the filled
+  half-circle: the literal ◑ "how much is left" glyph at icon scale.
+
+  Geometry: half-disc of radius 416 centred at (512, 512), so the visible
+  glyph occupies ~81% of the 1024×1024 canvas with ~9% padding on each side.
+  Right half filled (matches the original `M512 224 A288 288 0 0 1 512 800`).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <path d="M512 96 A416 416 0 0 1 512 928 Z" fill="#000000"/>
+</svg>

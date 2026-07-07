@@ -32,7 +32,9 @@ struct RemainsResponse {
 #[derive(Deserialize)]
 struct ModelRemain {
     current_interval_remaining_percent: Option<f64>,
+    end_time: Option<i64>,
     current_weekly_remaining_percent: Option<f64>,
+    weekly_end_time: Option<i64>,
 }
 
 pub struct MinimaxProvider;
@@ -83,9 +85,22 @@ impl UsageProvider for MinimaxProvider {
 
         Ok(Usage {
             five_hour: remaining_to_used(model.current_interval_remaining_percent),
+            five_hour_reset: ts_to_iso(model.end_time),
             weekly: remaining_to_used(model.current_weekly_remaining_percent),
+            weekly_reset: ts_to_iso(model.weekly_end_time),
         })
     }
+}
+
+fn ts_to_iso(ts: Option<i64>) -> Option<String> {
+    let ms = ts?;
+    if ms <= 0 {
+        return None;
+    }
+    use std::time::{Duration, UNIX_EPOCH};
+    let d = UNIX_EPOCH + Duration::from_millis(ms as u64);
+    let dt = chrono::DateTime::<chrono::Utc>::from(d);
+    Some(dt.to_rfc3339())
 }
 
 fn remaining_to_used(value: Option<f64>) -> u8 {

@@ -2,6 +2,7 @@
 //! panel dropdown.
 
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow,
@@ -10,6 +11,16 @@ use tauri_nspanel::ManagerExt;
 
 use crate::state::AppState;
 use crate::windows::{self, PANEL_LABEL};
+
+/// Menu-bar template icon, embedded at compile time. Source:
+/// `src-tauri/icons/tray-icon.svg` (the "1a Half gauge · 半月表" direction
+/// from `AnyLeft Icons.dc.html`, stripped to a monochrome ◑ glyph so the
+/// system can recolour it for light/dark menu bars via `icon_as_template`).
+const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/trayTemplate@2x.png");
+
+fn tray_icon() -> tauri::Result<Image<'static>> {
+    Image::from_bytes(TRAY_ICON_BYTES).map_err(Into::into)
+}
 
 pub const TRAY_ID: &str = "main";
 
@@ -34,7 +45,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     )?;
 
     TrayIconBuilder::with_id(TRAY_ID)
-        .icon(app.default_window_icon().expect("bundled icon").clone())
+        .icon(tray_icon()?)
         .icon_as_template(true)
         .tooltip("AnyLeft 剩了么")
         .menu(&menu)

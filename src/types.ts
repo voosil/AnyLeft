@@ -23,7 +23,9 @@ export interface DashboardProvider {
   enabled: boolean;
   /** Used quota percentage; display code converts this to remaining quota. */
   fiveHour: number | null;
+  fiveHourReset: string | null;
   weekly: number | null;
+  weeklyReset: string | null;
   /** User-facing failure message; null on success. */
   error: string | null;
 }

@@ -51,6 +51,7 @@ struct RefreshResponse {
 #[derive(Deserialize)]
 struct Window {
     used_percent: Option<f64>,
+    reset_at: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -120,13 +121,35 @@ fn parse_usage(body: &str) -> AppResult<Usage> {
         .and_then(|r| r.secondary_window.as_ref())
         .and_then(|w| w.used_percent);
 
+    let five_reset = rate_limit
+        .as_ref()
+        .and_then(|r| r.primary_window.as_ref())
+        .and_then(|w| w.reset_at);
+    let week_reset = rate_limit
+        .as_ref()
+        .and_then(|r| r.secondary_window.as_ref())
+        .and_then(|w| w.reset_at);
+
     if five.is_none() && week.is_none() {
         return Err(AppError::Usage("Codex 未返回用量窗口".to_string()));
     }
     Ok(Usage {
         five_hour: to_pct(five.unwrap_or(0.0)),
+        five_hour_reset: ts_to_iso(five_reset),
         weekly: to_pct(week.unwrap_or(0.0)),
+        weekly_reset: ts_to_iso(week_reset),
     })
+}
+
+fn ts_to_iso(ts: Option<i64>) -> Option<String> {
+    let secs = ts?;
+    if secs <= 0 {
+        return None;
+    }
+    use std::time::{Duration, UNIX_EPOCH};
+    let d = UNIX_EPOCH + Duration::from_secs(secs as u64);
+    let dt = chrono::DateTime::<chrono::Utc>::from(d);
+    Some(dt.to_rfc3339())
 }
 
 fn to_pct(value: f64) -> u8 {

@@ -1,10 +1,29 @@
 import type { DashboardProvider } from "../types";
 import { color, font } from "../theme";
 
-const PCT_COL = 38;
+const PCT_COL = 48;
 
 function remainingPercent(used: number | null): number {
   return Math.max(0, Math.min(100, 100 - (used ?? 0)));
+}
+
+function formatResetTime(isoTime: string | null): string {
+  if (!isoTime) return "";
+  const date = new Date(isoTime);
+  if (isNaN(date.getTime())) return "";
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  if (isToday) {
+    return `${hours}:${minutes}`;
+  }
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day} ${hours}:${minutes}`;
 }
 
 /** Condense a failure message into a short right-aligned status label. */
@@ -68,7 +87,14 @@ export function ProviderRow({ provider }: { provider: DashboardProvider }) {
             color: color.warn,
           }}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+          >
             <path d="M12 9v4" strokeLinecap="round" />
             <path d="M12 17h.01" strokeLinecap="round" />
             <path
@@ -80,32 +106,62 @@ export function ProviderRow({ provider }: { provider: DashboardProvider }) {
         </span>
       ) : (
         <>
-          <span
+          <div
             style={{
               flex: "none",
               width: PCT_COL,
               textAlign: "right",
-              fontFamily: font.mono,
-              fontSize: 13.5,
-              fontWeight: 600,
-              color: provider.accent,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
             }}
           >
-            {remainingPercent(provider.fiveHour)}%
-          </span>
-          <span
+            <span
+              style={{
+                fontFamily: font.mono,
+                fontSize: 13.5,
+                fontWeight: 600,
+                color: provider.accent,
+              }}
+            >
+              {remainingPercent(provider.fiveHour)}%
+            </span>
+            {provider.fiveHourReset && (
+              <span
+                style={{ fontSize: 9, color: color.faint, marginTop: -2, whiteSpace: "nowrap" }}
+              >
+                {formatResetTime(provider.fiveHourReset)}
+              </span>
+            )}
+          </div>
+          <div
             style={{
               flex: "none",
               width: PCT_COL,
               textAlign: "right",
-              fontFamily: font.mono,
-              fontSize: 13.5,
-              fontWeight: 600,
-              color: "#8a8072",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
             }}
           >
-            {remainingPercent(provider.weekly)}%
-          </span>
+            <span
+              style={{
+                fontFamily: font.mono,
+                fontSize: 13.5,
+                fontWeight: 600,
+                color: "#8a8072",
+              }}
+            >
+              {remainingPercent(provider.weekly)}%
+            </span>
+            {provider.weeklyReset && (
+              <span
+                style={{ fontSize: 9, color: color.faint, marginTop: -2, whiteSpace: "nowrap" }}
+              >
+                {formatResetTime(provider.weeklyReset)}
+              </span>
+            )}
+          </div>
         </>
       )}
     </div>

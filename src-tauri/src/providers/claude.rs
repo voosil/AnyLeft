@@ -63,6 +63,7 @@ struct RefreshResponse {
 #[derive(Deserialize)]
 struct UsageWindow {
     utilization: Option<f64>,
+    resets_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -106,15 +107,21 @@ impl UsageProvider for ClaudeProvider {
 
         let body: UsageResponse = response.json().await?;
         Ok(Usage {
-            five_hour: window_pct(body.five_hour),
-            weekly: window_pct(body.seven_day),
+            five_hour: window_pct(&body.five_hour),
+            five_hour_reset: window_reset(&body.five_hour),
+            weekly: window_pct(&body.seven_day),
+            weekly_reset: window_reset(&body.seven_day),
         })
     }
 }
 
-fn window_pct(window: Option<UsageWindow>) -> u8 {
-    let raw = window.and_then(|w| w.utilization).unwrap_or(0.0);
+fn window_pct(window: &Option<UsageWindow>) -> u8 {
+    let raw = window.as_ref().and_then(|w| w.utilization).unwrap_or(0.0);
     raw.round().clamp(0.0, 100.0) as u8
+}
+
+fn window_reset(window: &Option<UsageWindow>) -> Option<String> {
+    window.as_ref().and_then(|w| w.resets_at.clone())
 }
 
 /// Load the Claude Code OAuth credentials from env → keychain → file.

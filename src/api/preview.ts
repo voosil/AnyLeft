@@ -16,15 +16,87 @@ import type {
 } from "../types";
 
 const CATALOG: CatalogProvider[] = [
-  { id: "claude", name: "Claude", company: "Anthropic", mono: "C", plan: "Max 5×", accent: "#C96442", tint: "rgba(201,100,66,.13)" },
-  { id: "gpt", name: "ChatGPT", company: "OpenAI", mono: "GPT", plan: "Pro", accent: "#5F7F58", tint: "rgba(95,127,88,.16)" },
-  { id: "glm", name: "GLM", company: "Zhipu", mono: "GLM", plan: "Coding Pro", accent: "#2C5288", tint: "rgba(44,82,136,.13)" },
-  { id: "kimi", name: "Kimi", company: "Moonshot", mono: "K", plan: "Kimi+", accent: "#B4831F", tint: "rgba(224,178,74,.22)" },
-  { id: "minimax", name: "MiniMax", company: "MiniMax", mono: "M", plan: "Token Plan", accent: "#9A5A34", tint: "rgba(154,90,52,.15)" },
-  { id: "gemini", name: "Gemini", company: "Google", mono: "G", plan: "Advanced", accent: "#3B6CB3", tint: "rgba(59,108,179,.14)" },
-  { id: "grok", name: "Grok", company: "xAI", mono: "X", plan: "SuperGrok", accent: "#4A4A4A", tint: "rgba(74,74,74,.12)" },
-  { id: "cursor", name: "Cursor", company: "Anysphere", mono: "Cu", plan: "Pro", accent: "#6E8A4E", tint: "rgba(110,138,78,.15)" },
-  { id: "deepseek", name: "DeepSeek", company: "DeepSeek", mono: "DS", plan: "Pay-as-go", accent: "#4457A6", tint: "rgba(68,87,166,.13)" },
+  {
+    id: "claude",
+    name: "Claude",
+    company: "Anthropic",
+    mono: "C",
+    plan: "Max 5×",
+    accent: "#C96442",
+    tint: "rgba(201,100,66,.13)",
+  },
+  {
+    id: "gpt",
+    name: "ChatGPT",
+    company: "OpenAI",
+    mono: "GPT",
+    plan: "Pro",
+    accent: "#5F7F58",
+    tint: "rgba(95,127,88,.16)",
+  },
+  {
+    id: "glm",
+    name: "GLM",
+    company: "Zhipu",
+    mono: "GLM",
+    plan: "Coding Pro",
+    accent: "#2C5288",
+    tint: "rgba(44,82,136,.13)",
+  },
+  {
+    id: "kimi",
+    name: "Kimi",
+    company: "Moonshot",
+    mono: "K",
+    plan: "Kimi+",
+    accent: "#B4831F",
+    tint: "rgba(224,178,74,.22)",
+  },
+  {
+    id: "minimax",
+    name: "MiniMax",
+    company: "MiniMax",
+    mono: "M",
+    plan: "Token Plan",
+    accent: "#9A5A34",
+    tint: "rgba(154,90,52,.15)",
+  },
+  {
+    id: "gemini",
+    name: "Gemini",
+    company: "Google",
+    mono: "G",
+    plan: "Advanced",
+    accent: "#3B6CB3",
+    tint: "rgba(59,108,179,.14)",
+  },
+  {
+    id: "grok",
+    name: "Grok",
+    company: "xAI",
+    mono: "X",
+    plan: "SuperGrok",
+    accent: "#4A4A4A",
+    tint: "rgba(74,74,74,.12)",
+  },
+  {
+    id: "cursor",
+    name: "Cursor",
+    company: "Anysphere",
+    mono: "Cu",
+    plan: "Pro",
+    accent: "#6E8A4E",
+    tint: "rgba(110,138,78,.15)",
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    company: "DeepSeek",
+    mono: "DS",
+    plan: "Pay-as-go",
+    accent: "#4457A6",
+    tint: "rgba(68,87,166,.13)",
+  },
 ];
 
 /** Preview-only: a successful read (Claude) to visualise the populated row. */
@@ -69,9 +141,27 @@ function buildDashboard(): Dashboard {
       const usage = PREVIEW_USAGE[a.id];
       const base = { id: m.id, name: m.name, plan: m.plan, accent: m.accent, enabled: true };
       if (usage) {
-        return [{ ...base, fiveHour: usage.fiveHour, weekly: usage.weekly, error: null }];
+        return [
+          {
+            ...base,
+            fiveHour: usage.fiveHour,
+            fiveHourReset: null,
+            weekly: usage.weekly,
+            weeklyReset: null,
+            error: null,
+          },
+        ];
       }
-      return [{ ...base, fiveHour: null, weekly: null, error: PREVIEW_ERROR[a.id] ?? NOT_INTEGRATED }];
+      return [
+        {
+          ...base,
+          fiveHour: null,
+          fiveHourReset: null,
+          weekly: null,
+          weeklyReset: null,
+          error: PREVIEW_ERROR[a.id] ?? NOT_INTEGRATED,
+        },
+      ];
     });
 
   if (settings.preferences.sortByPressure) {

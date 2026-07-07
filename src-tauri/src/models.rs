@@ -46,13 +46,15 @@ pub struct CatalogProvider {
 }
 
 /// The live used-quota numbers for one provider, as two rolling windows.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Usage {
     /// Percentage of the 5-hour window consumed.
     pub five_hour: Percent,
+    pub five_hour_reset: Option<String>,
     /// Percentage of the weekly window consumed.
     pub weekly: Percent,
+    pub weekly_reset: Option<String>,
 }
 
 /// One row in the menu-bar dropdown: catalog metadata joined with live usage.
@@ -69,7 +71,9 @@ pub struct DashboardProvider {
     pub accent: String,
     pub enabled: bool,
     pub five_hour: Option<Percent>,
+    pub five_hour_reset: Option<String>,
     pub weekly: Option<Percent>,
+    pub weekly_reset: Option<String>,
     pub error: Option<String>,
 }
 
@@ -89,7 +93,9 @@ impl DashboardProvider {
             accent,
             enabled: true,
             five_hour: Some(usage.five_hour),
+            five_hour_reset: usage.five_hour_reset,
             weekly: Some(usage.weekly),
+            weekly_reset: usage.weekly_reset,
             error: None,
         }
     }
@@ -103,7 +109,9 @@ impl DashboardProvider {
             accent,
             enabled: true,
             five_hour: None,
+            five_hour_reset: None,
             weekly: None,
+            weekly_reset: None,
             error: Some(error),
         }
     }
