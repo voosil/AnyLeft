@@ -21,6 +21,8 @@ interface AddAccountModalProps {
   open: boolean;
   catalog: CatalogProvider[];
   connected: string[];
+  mode?: "add" | "configure";
+  initialProviderId?: string;
   onClose: () => void;
   onConnected: (settings: AppSettings) => void;
 }
@@ -29,6 +31,8 @@ export function AddAccountModal({
   open,
   catalog,
   connected,
+  mode = "add",
+  initialProviderId,
   onClose,
   onConnected,
 }: AddAccountModalProps) {
@@ -42,7 +46,9 @@ export function AddAccountModal({
     () => catalog.filter((p) => !connected.includes(p.id)),
     [catalog, connected],
   );
-  const selected = selectedId ? catalog.find((p) => p.id === selectedId) ?? null : null;
+  const activeId = initialProviderId ?? selectedId;
+  const selected = activeId ? catalog.find((p) => p.id === activeId) ?? null : null;
+  const configuring = mode === "configure";
 
   if (!open) return null;
 
@@ -69,10 +75,11 @@ export function AddAccountModal({
     setBusy(true);
     setError(null);
     try {
+      const nextAuth = selected.id === "minimax" ? "key" : auth;
       const next = await bridge.connectAccount(
         selected.id,
-        auth,
-        auth === "key" ? apiKey : undefined,
+        nextAuth,
+        nextAuth === "key" ? apiKey : undefined,
       );
       onConnected(next);
       reset();
@@ -122,7 +129,9 @@ export function AddAccountModal({
             borderBottom: `1px solid ${color.hair}`,
           }}
         >
-          <span style={{ fontWeight: 700, fontSize: 15, color: color.inkStrong }}>添加账户</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: color.inkStrong }}>
+            {configuring && selected ? `配置 ${selected.name}` : "添加账户"}
+          </span>
           <span
             onClick={handleClose}
             style={{
@@ -148,7 +157,8 @@ export function AddAccountModal({
             apiKey={apiKey}
             busy={busy}
             error={error}
-            onBack={() => setSelectedId(null)}
+            mode={mode}
+            onBack={configuring ? undefined : () => setSelectedId(null)}
             onAuth={setAuth}
             onKey={setApiKey}
             onCancel={handleClose}
@@ -227,7 +237,8 @@ interface ConnectFormProps {
   apiKey: string;
   busy: boolean;
   error: string | null;
-  onBack: () => void;
+  mode: "add" | "configure";
+  onBack?: () => void;
   onAuth: (a: AuthMethod) => void;
   onKey: (k: string) => void;
   onCancel: () => void;
@@ -240,12 +251,16 @@ function ConnectForm({
   apiKey,
   busy,
   error,
+  mode,
   onBack,
   onAuth,
   onKey,
   onCancel,
   onConnect,
 }: ConnectFormProps) {
+  const keyOnly = provider.id === "minimax";
+  const effectiveAuth = keyOnly ? "key" : auth;
+  const configuring = mode === "configure";
   const segStyle = (active: boolean) => ({
     flex: 1,
     border: "none",
@@ -261,24 +276,26 @@ function ConnectForm({
 
   return (
     <div style={{ padding: "14px 18px 18px" }}>
-      <button
-        onClick={onBack}
-        style={{
-          border: "none",
-          background: "none",
-          padding: 0,
-          marginBottom: 14,
-          cursor: "pointer",
-          color: color.brown,
-          fontSize: 12,
-          fontWeight: 600,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-        }}
-      >
-        ‹ 返回选择
-      </button>
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            border: "none",
+            background: "none",
+            padding: 0,
+            marginBottom: 14,
+            cursor: "pointer",
+            color: color.brown,
+            fontSize: 12,
+            fontWeight: 600,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          ‹ 返回选择
+        </button>
+      )}
 
       <div
         style={{
@@ -301,35 +318,41 @@ function ConnectForm({
         </div>
       </div>
 
-      <div style={{ fontSize: 12, fontWeight: 600, color: color.inkSoft, marginBottom: 8 }}>
-        授权方式
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          background: color.chip,
-          padding: 3,
-          borderRadius: 10,
-          marginBottom: 16,
-        }}
-      >
-        <button onClick={() => onAuth("key")} style={segStyle(auth === "key")}>
-          API Key
-        </button>
-        <button onClick={() => onAuth("login")} style={segStyle(auth === "login")}>
-          浏览器登录
-        </button>
-      </div>
-
-      {auth === "key" ? (
+      {!keyOnly && (
         <>
-          <div style={{ marginBottom: 6, fontSize: 12, color: color.muted }}>粘贴 API Key</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: color.inkSoft, marginBottom: 8 }}>
+            授权方式
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              background: color.chip,
+              padding: 3,
+              borderRadius: 10,
+              marginBottom: 16,
+            }}
+          >
+            <button onClick={() => onAuth("key")} style={segStyle(auth === "key")}>
+              API Key
+            </button>
+            <button onClick={() => onAuth("login")} style={segStyle(auth === "login")}>
+              浏览器登录
+            </button>
+          </div>
+        </>
+      )}
+
+      {effectiveAuth === "key" ? (
+        <>
+          <div style={{ marginBottom: 6, fontSize: 12, color: color.muted }}>
+            {provider.id === "minimax" ? "粘贴 MiniMax token" : "粘贴 API Key"}
+          </div>
           <input
             type="text"
             value={apiKey}
             onChange={(e) => onKey(e.target.value)}
-            placeholder="sk-..."
+            placeholder={provider.id === "minimax" ? "MiniMax token" : "sk-..."}
             spellCheck={false}
             autoComplete="off"
             style={{
@@ -345,7 +368,9 @@ function ConnectForm({
             }}
           />
           <div style={{ fontSize: 11, color: color.faint, marginTop: 8 }}>
-            密钥仅保存在本机钥匙串，用于读取用量。
+            {provider.id === "minimax"
+              ? "Token 仅保存在本机钥匙串，用于读取 MiniMax Token Plan 用量。"
+              : "密钥仅保存在本机钥匙串，用于读取用量。"}
           </div>
         </>
       ) : (
@@ -416,7 +441,7 @@ function ConnectForm({
             opacity: busy ? 0.7 : 1,
           }}
         >
-          {busy ? "连接中…" : "连接账户"}
+          {busy ? (configuring ? "保存中…" : "连接中…") : configuring ? "保存 token" : "连接账户"}
         </button>
       </div>
     </div>

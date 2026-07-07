@@ -20,7 +20,7 @@ const CATALOG: CatalogProvider[] = [
   { id: "gpt", name: "ChatGPT", company: "OpenAI", mono: "GPT", plan: "Pro", accent: "#5F7F58", tint: "rgba(95,127,88,.16)" },
   { id: "glm", name: "GLM", company: "Zhipu", mono: "GLM", plan: "Coding Pro", accent: "#2C5288", tint: "rgba(44,82,136,.13)" },
   { id: "kimi", name: "Kimi", company: "Moonshot", mono: "K", plan: "Kimi+", accent: "#B4831F", tint: "rgba(224,178,74,.22)" },
-  { id: "minimax", name: "MiniMax", company: "MiniMax", mono: "M", plan: "Standard", accent: "#9A5A34", tint: "rgba(154,90,52,.15)" },
+  { id: "minimax", name: "MiniMax", company: "MiniMax", mono: "M", plan: "Token Plan", accent: "#9A5A34", tint: "rgba(154,90,52,.15)" },
   { id: "gemini", name: "Gemini", company: "Google", mono: "G", plan: "Advanced", accent: "#3B6CB3", tint: "rgba(59,108,179,.14)" },
   { id: "grok", name: "Grok", company: "xAI", mono: "X", plan: "SuperGrok", accent: "#4A4A4A", tint: "rgba(74,74,74,.12)" },
   { id: "cursor", name: "Cursor", company: "Anysphere", mono: "Cu", plan: "Pro", accent: "#6E8A4E", tint: "rgba(110,138,78,.15)" },
@@ -30,6 +30,7 @@ const CATALOG: CatalogProvider[] = [
 /** Preview-only: a successful read (Claude) to visualise the populated row. */
 const PREVIEW_USAGE: Record<string, { fiveHour: number; weekly: number }> = {
   claude: { fiveHour: 42, weekly: 68 },
+  minimax: { fiveHour: 27, weekly: 14 },
 };
 
 /** Preview-only: a failure state (ChatGPT) to visualise the error row. */
@@ -41,14 +42,14 @@ const NOT_INTEGRATED = "暂未接入自动读取用量，敬请期待";
 const NEAR_LIMIT = 85;
 
 let settings: AppSettings = {
-  accounts: ["claude", "gpt"].map((id) => ({
+  accounts: ["claude", "gpt", "minimax"].map((id) => ({
     id,
     enabled: true,
     authMethod: "key" as AuthMethod,
     hasSecret: false,
   })),
   preferences: {
-    menubarPercent: true,
+    menubarPercent: false,
     nearLimitAlert: false,
     launchAtLogin: true,
     sortByPressure: true,

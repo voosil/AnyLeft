@@ -11,6 +11,7 @@ export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [catalog, setCatalog] = useState<CatalogProvider[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [configuringId, setConfiguringId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +43,8 @@ export function Settings() {
 
   const toggleAccount = (id: string, enabled: boolean) =>
     guard(() => bridge.setAccountEnabled(id, enabled));
+
+  const disconnectAccount = (id: string) => guard(() => bridge.disconnectAccount(id));
 
   const updatePref = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     if (!settings) return;
@@ -106,12 +109,62 @@ export function Settings() {
                     {meta.plan} · {meta.company}
                   </div>
                 </div>
+                {account.id === "minimax" && (
+                  <button
+                    onClick={() => {
+                      setConfiguringId(account.id);
+                      setModalOpen(true);
+                    }}
+                    style={{
+                      border: `1px solid ${color.hairStrong}`,
+                      background: color.card,
+                      color: color.brown,
+                      borderRadius: 7,
+                      padding: "5px 8px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    配置
+                  </button>
+                )}
                 <StatusPill enabled={account.enabled} />
                 <Toggle
                   on={account.enabled}
                   onToggle={() => toggleAccount(account.id, !account.enabled)}
                   label={`${meta.name} 开关`}
                 />
+                <button
+                  onClick={() => disconnectAccount(account.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 4,
+                    cursor: "pointer",
+                    color: color.faint,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: 4,
+                  }}
+                  title="删除账户"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                </button>
               </div>
             );
           })}
@@ -162,13 +215,6 @@ export function Settings() {
               <Kbd>U</Kbd>
             </span>
           </PrefRow>
-          <PrefRow title="菜单栏显示剩余额度" subtitle="在时钟旁显示最低剩余额度" divider>
-            <Toggle
-              on={settings?.preferences.menubarPercent ?? true}
-              onToggle={() => updatePref("menubarPercent", !settings?.preferences.menubarPercent)}
-              label="菜单栏显示剩余额度"
-            />
-          </PrefRow>
           <PrefRow title="接近上限提醒" subtitle="任一窗口剩余低于 15% 时通知" divider>
             <Toggle
               on={settings?.preferences.nearLimitAlert ?? false}
@@ -190,10 +236,16 @@ export function Settings() {
         open={modalOpen}
         catalog={catalog}
         connected={settings?.accounts.map((a) => a.id) ?? []}
-        onClose={() => setModalOpen(false)}
+        mode={configuringId ? "configure" : "add"}
+        initialProviderId={configuringId ?? undefined}
+        onClose={() => {
+          setModalOpen(false);
+          setConfiguringId(null);
+        }}
         onConnected={(next) => {
           setSettings(next);
           setModalOpen(false);
+          setConfiguringId(null);
         }}
       />
     </div>

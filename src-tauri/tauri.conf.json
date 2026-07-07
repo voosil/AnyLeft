@@ -30,7 +30,7 @@
         "skipTaskbar": true,
         "visible": false,
         "focus": false,
-        "shadow": true,
+        "shadow": false,
         "acceptFirstMouse": true
       },
       {
@@ -45,7 +45,7 @@
         "backgroundColor": "#00000000",
         "center": true,
         "visible": false,
-        "shadow": true
+        "shadow": false
       }
     ]
   },

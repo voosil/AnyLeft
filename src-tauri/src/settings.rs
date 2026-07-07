@@ -22,7 +22,7 @@ pub const DEFAULT_ACCENT: &str = "#C96442";
 /// The provider ids connected on a fresh install. Limited to the providers with
 /// a real integration so a new user never sees fabricated numbers — others can
 /// be added from settings (and will show a "not yet integrated" state).
-const DEFAULT_CONNECTED: &[&str] = &["claude", "gpt"];
+const DEFAULT_CONNECTED: &[&str] = &["claude", "gpt", "minimax"];
 
 /// A connected provider account. Secrets never live here — only whether one is
 /// stored (the key itself sits in the OS keychain, see `secrets.rs`).
@@ -67,7 +67,7 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Preferences {
-            menubar_percent: true,
+            menubar_percent: false,
             near_limit_alert: false,
             launch_at_login: true,
             sort_by_pressure: true,

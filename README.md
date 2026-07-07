@@ -97,7 +97,7 @@ pub trait UsageProvider: Send + Sync {
 }
 ```
 
-**There is no mock data.** Two providers are real integrations:
+**There is no mock data.** Three providers are real integrations:
 
 - **Claude** (`providers/claude.rs`) — reads the local **Claude Code** OAuth login
   (macOS keychain `Claude Code-credentials`, `~/.claude/.credentials.json`, or
@@ -110,15 +110,24 @@ pub trait UsageProvider: Send + Sync {
   `GET https://chatgpt.com/backend-api/wham/usage`, and maps
   `rate_limit.primary_window.used_percent` → **5H**,
   `secondary_window.used_percent` → **WEEK**.
+- **MiniMax Token Plan** (`providers/minimax.rs`) — reads a MiniMax token from
+  the AnyLeft keychain entry, `MINIMAX_TOKEN` / `MINIMAX_API_KEY`, or
+  `~/.minimax-config.json`, calls
+  `GET https://www.minimaxi.com/v1/api/openplatform/coding_plan/remains`, and
+  maps MiniMax `*_remaining_percent` fields back to used quota for **5H** /
+  **WEEK**.
 
-Endpoints follow the [OpenUsage](https://github.com/robinebers/openusage) project.
+Claude and ChatGPT endpoints follow the
+[OpenUsage](https://github.com/robinebers/openusage) project. MiniMax follows
+the `minimax-status` CLI endpoint.
 macOS prompts for keychain access on first read.
 
 When a provider can't be read (not logged in, network error, or **not yet
 integrated** for the other catalog entries), that row shows a real **failure
 state** (⚠ + short reason, full message on hover) — never a fabricated number.
-A fresh install connects only the integrated providers (`claude`, `gpt`); others
-can be added from settings and will show the "not yet integrated" state.
+A fresh install connects only the integrated providers (`claude`, `gpt`,
+`minimax`); others can be added from settings and will show the "not yet
+integrated" state.
 
 To add a real integration, implement `UsageProvider` (reading an API key with
 `secrets::get_key` where relevant) and register it in

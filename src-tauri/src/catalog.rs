@@ -14,7 +14,7 @@ const CATALOG: &[(&str, &str, &str, &str, &str, &str, &str)] = &[
     ("gpt", "ChatGPT", "OpenAI", "GPT", "Pro", "#5F7F58", "rgba(95,127,88,.16)"),
     ("glm", "GLM", "Zhipu", "GLM", "Coding Pro", "#2C5288", "rgba(44,82,136,.13)"),
     ("kimi", "Kimi", "Moonshot", "K", "Kimi+", "#B4831F", "rgba(224,178,74,.22)"),
-    ("minimax", "MiniMax", "MiniMax", "M", "Standard", "#9A5A34", "rgba(154,90,52,.15)"),
+    ("minimax", "MiniMax", "MiniMax", "M", "Token Plan", "#9A5A34", "rgba(154,90,52,.15)"),
     ("gemini", "Gemini", "Google", "G", "Advanced", "#3B6CB3", "rgba(59,108,179,.14)"),
     ("grok", "Grok", "xAI", "X", "SuperGrok", "#4A4A4A", "rgba(74,74,74,.12)"),
     ("cursor", "Cursor", "Anysphere", "Cu", "Pro", "#6E8A4E", "rgba(110,138,78,.15)"),

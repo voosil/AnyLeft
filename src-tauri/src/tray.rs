@@ -1,5 +1,5 @@
-//! The menu-bar tray icon: its menu, its live percentage title, and the
-//! show/hide logic for the panel dropdown.
+//! The menu-bar tray icon, its context menu, and the show/hide logic for the
+//! panel dropdown.
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -43,7 +43,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             "settings" => {
                 let _ = windows::show_settings(app);
             }
-            "refresh" => refresh_tray(app),
+            "refresh" => refresh_usage(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -62,33 +62,28 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Recompute the menu-bar title from current settings + remaining quota. Fire-and-forget:
-/// the dashboard may hit the network, so it runs on the async runtime and also
-/// warms the usage cache for the next panel open.
+/// Keep the menu-bar item icon-only. Older builds displayed a live `◐ NN%`
+/// title here; clearing it on every refresh path also removes stale titles from
+/// already-running dev builds after rebuild/relaunch.
 pub fn refresh_tray(app: &AppHandle) {
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let _ = tray.set_title(None::<String>);
+    }
+}
+
+/// Force-refresh usage from the context menu without restoring the removed
+/// menu-bar percentage title.
+fn refresh_usage(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let show = {
+        let result = {
             let state = app.state::<AppState>();
-            state.settings_snapshot().preferences.menubar_percent
+            state.dashboard(true).await
         };
-
-        let title: Option<String> = if show {
-            let dashboard = {
-                let state = app.state::<AppState>();
-                state.dashboard(false).await
-            };
-            dashboard
-                .ok()
-                .and_then(|d| d.highest)
-                .map(|highest| format!("◐ {}%", 100u8.saturating_sub(highest)))
-        } else {
-            None
-        };
-
-        if let Some(tray) = app.tray_by_id(TRAY_ID) {
-            let _ = tray.set_title(title);
+        if let Err(err) = result {
+            eprintln!("[anyleft] manual refresh failed: {err}");
         }
+        refresh_tray(&app);
     });
 }
 

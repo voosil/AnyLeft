@@ -5,13 +5,14 @@
 //! window is used?" so real integrations drop in per provider without touching
 //! the commands or UI.
 //!
-//! Real integrations today: `claude` and `gpt` (ChatGPT/Codex). Both read the
-//! local CLI login and call the provider's usage endpoint — there is no mock
-//! data. Any other id reports a clear "not yet integrated" error that the panel
-//! surfaces per row.
+//! Real integrations today: `claude`, `gpt` (ChatGPT/Codex), and `minimax`.
+//! They read local credentials and call each provider's usage endpoint — there
+//! is no mock data. Any other id reports a clear "not yet integrated" error
+//! that the panel surfaces per row.
 
 pub mod claude;
 pub mod codex;
+pub mod minimax;
 
 use std::collections::HashMap;
 
@@ -45,6 +46,7 @@ impl ProviderRegistry {
         let mut providers: HashMap<String, Box<dyn UsageProvider>> = HashMap::new();
         providers.insert("claude".to_string(), Box::new(claude::ClaudeProvider::new()));
         providers.insert("gpt".to_string(), Box::new(codex::CodexProvider::new()));
+        providers.insert("minimax".to_string(), Box::new(minimax::MinimaxProvider::new()));
         ProviderRegistry { providers }
     }
 

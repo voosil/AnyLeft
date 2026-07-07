@@ -9,9 +9,9 @@ function remainingPercent(used: number | null): number {
 
 /** Condense a failure message into a short right-aligned status label. */
 function shortStatus(error: string): string {
+  if (/token|api key|钥匙串/i.test(error)) return "需配置";
   if (/登录|凭据|codex|claude/i.test(error)) return "需登录";
   if (/暂未接入|不支持/.test(error)) return "未接入";
-  if (/API Key/i.test(error)) return "需登录";
   return "读取失败";
 }
 

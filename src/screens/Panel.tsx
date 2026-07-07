@@ -13,6 +13,7 @@ const PCT_COL = 38;
  */
 export function Panel() {
   const cardRef = useRef<HTMLDivElement>(null);
+  const settingsLinkRef = useRef<HTMLAnchorElement>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +30,12 @@ export function Panel() {
 
   useEffect(() => {
     void load();
-    const onFocus = () => void load();
+    const clearSettingsFocus = () => settingsLinkRef.current?.blur();
+    const onFocus = () => {
+      clearSettingsFocus();
+      void load();
+    };
+    clearSettingsFocus();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
@@ -46,7 +52,7 @@ export function Panel() {
         // WebkitBackdropFilter: "blur(24px) saturate(1.3)",
         border: `1px solid rgba(255,255,255,.62)`,
         borderRadius: 15,
-        boxShadow: "0 24px 50px -16px rgba(40,28,10,.55), inset 0 1px 0 rgba(255,255,255,.75)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,.75)",
         padding: "13px 13px 8px",
         width: 340,
       }}
@@ -62,7 +68,20 @@ export function Panel() {
           marginBottom: 5,
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 15, color: color.inkStrong }}>AnyLeft</span>
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: color.inkStrong }}>剩了么</span>
+          <span
+            style={{
+              fontFamily: font.mono,
+              fontSize: 9,
+              letterSpacing: ".05em",
+              color: color.faint,
+              textTransform: "uppercase",
+            }}
+          >
+            Reset: 5h & week
+          </span>
+        </span>
         <div
           style={{
             display: "flex",
@@ -106,9 +125,13 @@ export function Panel() {
         }}
       >
         <a
+          ref={settingsLinkRef}
           href="#settings"
+          tabIndex={-1}
+          onPointerDown={(e) => e.preventDefault()}
           onClick={(e) => {
             e.preventDefault();
+            e.currentTarget.blur();
             void bridge.openSettings();
           }}
           style={{
@@ -117,6 +140,7 @@ export function Panel() {
             gap: 6,
             color: color.muted,
             fontWeight: 500,
+            outline: "none",
           }}
         >
           设置

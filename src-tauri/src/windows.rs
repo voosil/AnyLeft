@@ -25,6 +25,7 @@ const NS_NONACTIVATING_PANEL_MASK: i32 = 1 << 7;
 /// Promote the menu-bar panel window into a non-activating `NSPanel` that floats
 /// over full-screen spaces, and wire "resign key" to hide it (click-outside to
 /// close). Call once, at setup.
+#[allow(deprecated)]
 pub fn configure_overlay_panel(
     app: &AppHandle,
     window: &WebviewWindow,

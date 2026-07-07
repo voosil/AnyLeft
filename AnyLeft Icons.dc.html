@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Noto+Sans+SC:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#DCCFB4;font-family:'Schibsted Grotesk','Noto Sans SC',sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:#274A80;text-decoration:none}
+  a:hover{color:#C96442}
+</style>
+</helmet>
+<section data-screen-label="AnyLeft — app icon directions" style="min-height:100vh;padding:60px 64px 110px;color:#33302A;font-family:'Schibsted Grotesk','Noto Sans SC',sans-serif;background:radial-gradient(1200px 720px at 18% -12%,rgba(228,178,74,.28),transparent 60%),radial-gradient(950px 640px at 102% 28%,rgba(39,74,128,.22),transparent 62%),linear-gradient(158deg,#EFE7D6,#E3D4BA 58%,#D6C29F)">
+
+  <!-- ===================== ICON SYMBOL DEFS ===================== -->
+  <svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+    <defs>
+      <!-- shared parchment + gloss -->
+      <linearGradient id="parch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7EFDC"></stop><stop offset="1" stop-color="#E7D6B7"></stop></linearGradient>
+      <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".55"></stop><stop offset=".48" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+      <linearGradient id="navybg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#325D98"></stop><stop offset="1" stop-color="#213E69"></stop></linearGradient>
+      <linearGradient id="darkbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3D372D"></stop><stop offset="1" stop-color="#2B261E"></stop></linearGradient>
+      <linearGradient id="creambg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3E9CF"></stop><stop offset="1" stop-color="#E4CE9C"></stop></linearGradient>
+
+      <!-- 1a — half gauge -->
+      <symbol id="ic-a" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#parch)"></rect>
+        <circle cx="512" cy="512" r="288" fill="#FBF5E6" stroke="#C96442" stroke-width="28"></circle>
+        <path d="M512 224 A288 288 0 0 1 512 800 Z" fill="#C96442"></path>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)"></rect>
+      </symbol>
+
+      <!-- 1b — ring gauge -->
+      <symbol id="ic-b" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#navybg)"></rect>
+        <circle cx="512" cy="512" r="270" fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width="48"></circle>
+        <circle cx="512" cy="512" r="270" fill="none" stroke="#E7B84E" stroke-width="48" stroke-linecap="round" stroke-dasharray="1696.6" stroke-dashoffset="543" transform="rotate(-90 512 512)"></circle>
+        <path d="M512 396 L556 470 L468 470 Z" fill="#EFE7D4"></path>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)" opacity=".5"></rect>
+      </symbol>
+
+      <!-- 1c — fuel dial -->
+      <symbol id="ic-c" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#parch)"></rect>
+        <path d="M202 604 A310 310 0 0 1 822 604" fill="none" stroke="#E4D2B0" stroke-width="34" stroke-linecap="round"></path>
+        <path d="M202 604 A310 310 0 0 1 653 328" fill="none" stroke="#C96442" stroke-width="34" stroke-linecap="round"></path>
+        <line x1="237" y1="604" x2="202" y2="604" stroke="#B29A6E" stroke-width="10" stroke-linecap="round"></line>
+        <line x1="317" y1="409" x2="293" y2="385" stroke="#B29A6E" stroke-width="10" stroke-linecap="round"></line>
+        <line x1="512" y1="329" x2="512" y2="294" stroke="#B29A6E" stroke-width="10" stroke-linecap="round"></line>
+        <line x1="707" y1="409" x2="731" y2="385" stroke="#B29A6E" stroke-width="10" stroke-linecap="round"></line>
+        <line x1="787" y1="604" x2="822" y2="604" stroke="#B29A6E" stroke-width="10" stroke-linecap="round"></line>
+        <line x1="512" y1="604" x2="628" y2="382" stroke="#33302A" stroke-width="24" stroke-linecap="round"></line>
+        <circle cx="512" cy="604" r="40" fill="#33302A"></circle>
+        <circle cx="512" cy="604" r="16" fill="#F7EFDC"></circle>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)"></rect>
+      </symbol>
+
+      <!-- 1d — meter bars -->
+      <symbol id="ic-d" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#darkbg)"></rect>
+        <rect x="214" y="552" width="118" height="208" rx="40" fill="#C96442"></rect>
+        <rect x="374" y="402" width="118" height="358" rx="40" fill="#E4B24A"></rect>
+        <rect x="534" y="462" width="118" height="298" rx="40" fill="#7B9A57"></rect>
+        <rect x="694" y="292" width="118" height="468" rx="40" fill="#5B84C4"></rect>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)" opacity=".35"></rect>
+      </symbol>
+
+      <!-- 1e — battery left -->
+      <symbol id="ic-e" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#creambg)"></rect>
+        <rect x="240" y="386" width="470" height="252" rx="58" fill="#FCF7EC" stroke="#33302A" stroke-width="26"></rect>
+        <rect x="714" y="450" width="50" height="124" rx="24" fill="#33302A"></rect>
+        <rect x="270" y="416" width="176" height="192" rx="34" fill="#C96442"></rect>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)"></rect>
+      </symbol>
+
+      <!-- 1f — 剩 glyph -->
+      <symbol id="ic-f" viewBox="0 0 1024 1024">
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#parch)"></rect>
+        <text x="512" y="524" font-family="'Noto Sans SC',sans-serif" font-weight="900" font-size="660" fill="#C96442" text-anchor="middle" dominant-baseline="central">剩</text>
+        <circle cx="762" cy="286" r="34" fill="#274A80"></circle>
+        <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#gloss)"></rect>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ===================== HEADER ===================== -->
+  <div style="max-width:820px;margin-bottom:52px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.22em;color:#9A5A34;margin-bottom:14px">AALTO · APP ICON · TURN 1</div>
+    <h1 style="margin:0 0 14px;font-size:44px;line-height:1.02;font-weight:700;letter-spacing:-.02em;color:#2E2A22">AnyLeft — 图标方案</h1>
+    <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#5F564A;max-width:640px;text-wrap:pretty">Six macOS app-icon directions for the LLM-quota tracker, all built on the warm-modernism palette and the ◑ "how much is left" motif. Each shown at large and dock-small size. 六个方向，均取「剩多少」的表盘意象。</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:13px;color:#6E655A">
+      <span style="color:#9A8F80">Jump</span>
+      <span style="display:flex;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px"><a href="#1a">1a</a><a href="#1b">1b</a><a href="#1c">1c</a><a href="#1d">1d</a><a href="#1e">1e</a><a href="#1f">1f</a></span>
+    </div>
+  </div>
+
+  <!-- ===================== GALLERY ===================== -->
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <!-- 1a -->
+    <div id="1a" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1a" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#9A5A34;border-radius:7px;padding:3px 9px">1a</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">Half gauge · 半月表</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-a"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-a"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">The literal menu-bar ◑ glyph, enlarged. The single clearest reading of "remaining."</p>
+    </div>
+
+    <!-- 1b -->
+    <div id="1b" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1b" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#2C5288;border-radius:7px;padding:3px 9px">1b</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">Ring gauge · 环形表盘</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-b"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-b"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">Gold progress ring on navy, with a reset-tick at top. Echoes the cabinet-card gauges.</p>
+    </div>
+
+    <!-- 1c -->
+    <div id="1c" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1c" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#C96442;border-radius:7px;padding:3px 9px">1c</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">Fuel dial · 油量指针</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-c"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-c"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">A needle sweeping a ticked arc — the "Ration" fuel-gauge metaphor made literal.</p>
+    </div>
+
+    <!-- 1d -->
+    <div id="1d" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1d" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#6E8A4E;border-radius:7px;padding:3px 9px">1d</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">Meter bars · 用量条</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-d"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-d"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">Four provider-colored bars on dark. Speaks to "many plans at a glance" over a single gauge.</p>
+    </div>
+
+    <!-- 1e -->
+    <div id="1e" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1e" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#B4831F;border-radius:7px;padding:3px 9px">1e</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">Battery · 余量电池</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-e"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-e"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">Universally-understood "charge left." Warmest, friendliest read of the six.</p>
+    </div>
+
+    <!-- 1f -->
+    <div id="1f" style="width:322px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:11px">
+        <a href="#1f" style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#FBF8F1;background:#274A80;border-radius:7px;padding:3px 9px">1f</a>
+        <span style="font-size:15px;font-weight:600;color:#2E2A22">剩 glyph · 汉字标</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:24px;padding:6px 2px">
+        <svg viewBox="0 0 1024 1024" width="200" height="200" style="filter:drop-shadow(0 20px 30px rgba(60,40,15,.34))"><use href="#ic-f"></use></svg>
+        <svg viewBox="0 0 1024 1024" width="72" height="72" style="filter:drop-shadow(0 8px 14px rgba(60,40,15,.3))"><use href="#ic-f"></use></svg>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#6E655A">The "剩" of 剩了么 as a typographic mark, with a navy status dot. Distinctive; leans on the CN name.</p>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>
