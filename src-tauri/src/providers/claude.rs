@@ -203,13 +203,13 @@ fn read_local_oauth() -> AppResult<OAuth> {
             ..OAuth::default()
         });
     }
+    if let Some(oauth) = read_file_oauth() {
+        return Ok(oauth);
+    }
     if let Some(json) = read_keychain_json() {
         if let Some(oauth) = parse_oauth(&json) {
             return Ok(oauth);
         }
-    }
-    if let Some(oauth) = read_file_oauth() {
-        return Ok(oauth);
     }
     Err(AppError::Usage(
         "未找到 Claude Code 登录凭据，请先在终端运行 `claude` 登录".to_string(),
