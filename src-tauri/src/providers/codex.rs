@@ -28,6 +28,9 @@ struct Tokens {
     access_token: Option<String>,
     refresh_token: Option<String>,
     account_id: Option<String>,
+    /// OpenID id token — a JWT whose `https://api.openai.com/auth` claim carries
+    /// `chatgpt_plan_type` ("plus", "pro", …). Read locally for the live plan.
+    id_token: Option<String>,
 }
 
 impl Tokens {
@@ -87,6 +90,7 @@ impl UsageProvider for CodexProvider {
 
         let access = tokens.access().unwrap().to_string();
         let account_id = tokens.account_id.as_deref();
+        let plan = plan_from_id_token(tokens.id_token.as_deref());
 
         let (status, body) = request_usage(ctx, &access, account_id).await?;
         if status == 401 || status == 403 {
@@ -95,17 +99,62 @@ impl UsageProvider for CodexProvider {
             })?;
             let fresh = refresh_token(ctx, refresh).await?;
             let (retry_status, retry_body) = request_usage(ctx, &fresh, account_id).await?;
-            return finish(retry_status, &retry_body);
+            return finish(retry_status, &retry_body, plan);
         }
-        finish(status, &body)
+        finish(status, &body, plan)
     }
 }
 
-fn finish(status: u16, body: &str) -> AppResult<Usage> {
+fn finish(status: u16, body: &str, plan: Option<String>) -> AppResult<Usage> {
     if !(200..300).contains(&status) {
         return Err(AppError::Usage(format!("Codex 用量接口返回 HTTP {status}")));
     }
-    parse_usage(body)
+    Ok(Usage {
+        plan,
+        ..parse_usage(body)?
+    })
+}
+
+/// Extract `chatgpt_plan_type` from the id token's `https://api.openai.com/auth`
+/// claim. The JWT is trusted local data, so we decode (not verify) its payload.
+/// Returns `None` when absent/unparseable, hiding the plan rather than guessing.
+fn plan_from_id_token(id_token: Option<&str>) -> Option<String> {
+    let payload = id_token?.trim().split('.').nth(1)?;
+    let bytes = base64url_decode(payload)?;
+    let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    let plan = claims
+        .get("https://api.openai.com/auth")?
+        .get("chatgpt_plan_type")?
+        .as_str()?;
+    super::pretty_plan(Some(plan))
+}
+
+/// Minimal base64url (no padding) decoder — avoids pulling in a base64 crate for
+/// the one JWT payload we read.
+fn base64url_decode(input: &str) -> Option<Vec<u8>> {
+    fn sextet(c: u8) -> Option<u32> {
+        match c {
+            b'A'..=b'Z' => Some((c - b'A') as u32),
+            b'a'..=b'z' => Some((c - b'a' + 26) as u32),
+            b'0'..=b'9' => Some((c - b'0' + 52) as u32),
+            b'-' => Some(62),
+            b'_' => Some(63),
+            _ => None,
+        }
+    }
+    let input = input.trim_end_matches('=').as_bytes();
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let mut buffer = 0u32;
+    let mut bits = 0u32;
+    for &c in input {
+        buffer = (buffer << 6) | sextet(c)?;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+        }
+    }
+    Some(out)
 }
 
 fn parse_usage(body: &str) -> AppResult<Usage> {
@@ -138,6 +187,7 @@ fn parse_usage(body: &str) -> AppResult<Usage> {
         five_hour_reset: ts_to_iso(five_reset),
         weekly: to_pct(week.unwrap_or(0.0)),
         weekly_reset: ts_to_iso(week_reset),
+        plan: None,
     })
 }
 

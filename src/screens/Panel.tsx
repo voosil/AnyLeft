@@ -109,7 +109,7 @@ export function Panel() {
           还没有启用的账户，去设置里添加 →
         </div>
       ) : (
-        dashboard.providers.map((p) => <ProviderRow key={p.id} provider={p} />)
+        dashboard.providers.map((p) => <ProviderRow key={p.accountId} provider={p} />)
       )}
 
       {/* footer */}

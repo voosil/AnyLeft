@@ -55,19 +55,29 @@ pub struct Usage {
     /// Percentage of the weekly window consumed.
     pub weekly: Percent,
     pub weekly_reset: Option<String>,
+    /// Subscription/plan type read live from the provider (e.g. Claude's
+    /// `subscriptionType`, ChatGPT's `chatgpt_plan_type`). `None` when the
+    /// provider doesn't expose it — the UI then hides the plan label rather than
+    /// showing a static guess.
+    #[serde(default)]
+    pub plan: Option<String>,
 }
 
 /// One row in the menu-bar dropdown: catalog metadata joined with live usage.
 ///
-/// `five_hour`/`weekly` are present only on a successful read; `error` carries a
-/// user-facing message when the provider couldn't be read (not logged in,
-/// network failure, not yet integrated). Exactly one side is populated.
+/// `account_id` identifies the specific connected account (a provider can now
+/// have several); `provider_id` is the catalog id it belongs to. `five_hour`/
+/// `weekly` are present only on a successful read; `error` carries a user-facing
+/// message when the provider couldn't be read (not logged in, network failure,
+/// not yet integrated). Exactly one side is populated. `plan` is `None` when the
+/// subscription type is unknown — the UI then omits the label.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardProvider {
-    pub id: String,
+    pub account_id: String,
+    pub provider_id: String,
     pub name: String,
-    pub plan: String,
+    pub plan: Option<String>,
     pub accent: String,
     pub enabled: bool,
     pub five_hour: Option<Percent>,
@@ -80,14 +90,16 @@ pub struct DashboardProvider {
 impl DashboardProvider {
     /// A successfully-read row with live usage.
     pub fn ok(
-        id: String,
+        account_id: String,
+        provider_id: String,
         name: String,
-        plan: String,
+        plan: Option<String>,
         accent: String,
         usage: Usage,
     ) -> Self {
         DashboardProvider {
-            id,
+            account_id,
+            provider_id,
             name,
             plan,
             accent,
@@ -101,9 +113,17 @@ impl DashboardProvider {
     }
 
     /// A row that failed to read, carrying a user-facing message.
-    pub fn failed(id: String, name: String, plan: String, accent: String, error: String) -> Self {
+    pub fn failed(
+        account_id: String,
+        provider_id: String,
+        name: String,
+        plan: Option<String>,
+        accent: String,
+        error: String,
+    ) -> Self {
         DashboardProvider {
-            id,
+            account_id,
+            provider_id,
             name,
             plan,
             accent,

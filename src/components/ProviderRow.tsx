@@ -62,17 +62,19 @@ export function ProviderRow({ provider }: { provider: DashboardProvider }) {
       />
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 7 }}>
         <span style={{ fontWeight: 600, fontSize: 13, color: color.ink }}>{provider.name}</span>
-        <span
-          style={{
-            fontSize: 10.5,
-            color: color.faint,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {provider.plan}
-        </span>
+        {provider.plan && (
+          <span
+            style={{
+              fontSize: 10.5,
+              color: color.faint,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {provider.plan}
+          </span>
+        )}
       </div>
 
       {failed ? (

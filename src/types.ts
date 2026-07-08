@@ -16,9 +16,14 @@ export interface CatalogProvider {
 }
 
 export interface DashboardProvider {
-  id: string;
+  /** Unique per connected account (a provider can have several). */
+  accountId: string;
+  /** Catalog id this account belongs to, e.g. "kimi". */
+  providerId: string;
+  /** Display name — the account's custom label, or the catalog name. */
   name: string;
-  plan: string;
+  /** Subscription/plan label; null when unknown (then hidden). */
+  plan: string | null;
   accent: string;
   enabled: boolean;
   /** Used quota percentage; display code converts this to remaining quota. */
@@ -38,7 +43,12 @@ export interface Dashboard {
 }
 
 export interface Account {
-  id: string;
+  /** Unique per account; the keychain key. */
+  accountId: string;
+  /** Catalog id this account belongs to. */
+  providerId: string;
+  /** Optional user-chosen name; null falls back to the catalog name. */
+  label: string | null;
   enabled: boolean;
   authMethod: AuthMethod;
   hasSecret: boolean;

@@ -48,7 +48,7 @@ const CATALOG: CatalogProvider[] = [
     name: "Kimi",
     company: "Moonshot",
     mono: "K",
-    plan: "Kimi+",
+    plan: "Kimi Code",
     accent: "#B4831F",
     tint: "rgba(224,178,74,.22)",
   },
@@ -102,7 +102,13 @@ const CATALOG: CatalogProvider[] = [
 /** Preview-only: a successful read (Claude) to visualise the populated row. */
 const PREVIEW_USAGE: Record<string, { fiveHour: number; weekly: number }> = {
   claude: { fiveHour: 42, weekly: 68 },
+  kimi: { fiveHour: 70, weekly: 10 },
   minimax: { fiveHour: 27, weekly: 14 },
+};
+
+/** Preview-only: live plan for providers that expose one (Claude). */
+const PREVIEW_PLAN: Record<string, string> = {
+  claude: "Max",
 };
 
 /** Preview-only: a failure state (ChatGPT) to visualise the error row. */
@@ -113,9 +119,14 @@ const PREVIEW_ERROR: Record<string, string> = {
 const NOT_INTEGRATED = "暂未接入自动读取用量，敬请期待";
 const NEAR_LIMIT = 85;
 
+/** Providers whose plan is read live and hidden when unknown (mirrors Rust). */
+const DYNAMIC_PLAN_PROVIDERS = new Set(["claude", "gpt"]);
+
 let settings: AppSettings = {
-  accounts: ["claude", "gpt", "minimax"].map((id) => ({
-    id,
+  accounts: ["claude", "gpt", "kimi", "minimax"].map((id) => ({
+    accountId: id,
+    providerId: id,
+    label: null,
     enabled: true,
     authMethod: "key" as AuthMethod,
     hasSecret: false,
@@ -132,18 +143,32 @@ let settings: AppSettings = {
 
 const meta = (id: string) => CATALOG.find((p) => p.id === id);
 
+/** Mirror of the backend `resolve_plan`: live value wins; dynamic-plan providers
+ *  hide an unknown plan; others fall back to the catalog plan. */
+function resolvePlan(providerId: string, catalogPlan: string, livePlan?: string): string | null {
+  if (livePlan) return livePlan;
+  return DYNAMIC_PLAN_PROVIDERS.has(providerId) ? null : catalogPlan;
+}
+
 function buildDashboard(): Dashboard {
   const rows: DashboardProvider[] = settings.accounts
     .filter((a) => a.enabled)
     .flatMap((a): DashboardProvider[] => {
-      const m = meta(a.id);
+      const m = meta(a.providerId);
       if (!m) return [];
-      const usage = PREVIEW_USAGE[a.id];
-      const base = { id: m.id, name: m.name, plan: m.plan, accent: m.accent, enabled: true };
+      const usage = PREVIEW_USAGE[a.providerId];
+      const base = {
+        accountId: a.accountId,
+        providerId: a.providerId,
+        name: a.label?.trim() || m.name,
+        accent: m.accent,
+        enabled: true,
+      };
       if (usage) {
         return [
           {
             ...base,
+            plan: resolvePlan(a.providerId, m.plan, PREVIEW_PLAN[a.providerId]),
             fiveHour: usage.fiveHour,
             fiveHourReset: null,
             weekly: usage.weekly,
@@ -155,11 +180,12 @@ function buildDashboard(): Dashboard {
       return [
         {
           ...base,
+          plan: resolvePlan(a.providerId, m.plan, undefined),
           fiveHour: null,
           fiveHourReset: null,
           weekly: null,
           weeklyReset: null,
-          error: PREVIEW_ERROR[a.id] ?? NOT_INTEGRATED,
+          error: PREVIEW_ERROR[a.providerId] ?? NOT_INTEGRATED,
         },
       ];
     });
@@ -184,28 +210,51 @@ export const previewBackend = {
   get_dashboard: async (): Promise<Dashboard> => buildDashboard(),
   refresh: async (): Promise<Dashboard> => buildDashboard(),
 
-  connect_account: async (args: { id: string; authMethod: AuthMethod; apiKey?: string }) => {
-    const accounts = settings.accounts.filter((a) => a.id !== args.id);
+  connect_account: async (args: {
+    providerId: string;
+    authMethod: AuthMethod;
+    apiKey?: string;
+    label?: string;
+    accountId?: string;
+  }) => {
+    const single = args.providerId === "claude" || args.providerId === "gpt";
+    const existing =
+      args.accountId && settings.accounts.find((a) => a.accountId === args.accountId);
+    const accountId = single
+      ? args.providerId
+      : existing
+        ? args.accountId!
+        : `${args.providerId}-${settings.accounts.length + 1}`;
+    const label = args.label?.trim() ? args.label.trim() : null;
+    const hasSecret =
+      (args.authMethod === "key" && !!args.apiKey?.trim()) ||
+      (!!existing && existing.hasSecret && args.authMethod === "key");
+    const accounts = settings.accounts.filter((a) => a.accountId !== accountId);
     accounts.push({
-      id: args.id,
-      enabled: true,
+      accountId,
+      providerId: args.providerId,
+      label,
+      enabled: existing ? existing.enabled : true,
       authMethod: args.authMethod,
-      hasSecret: args.authMethod === "key" && !!args.apiKey?.trim(),
+      hasSecret,
     });
     settings = { ...settings, accounts };
     return structuredClone(settings);
   },
 
-  disconnect_account: async (args: { id: string }) => {
-    settings = { ...settings, accounts: settings.accounts.filter((a) => a.id !== args.id) };
+  disconnect_account: async (args: { accountId: string }) => {
+    settings = {
+      ...settings,
+      accounts: settings.accounts.filter((a) => a.accountId !== args.accountId),
+    };
     return structuredClone(settings);
   },
 
-  set_account_enabled: async (args: { id: string; enabled: boolean }) => {
+  set_account_enabled: async (args: { accountId: string; enabled: boolean }) => {
     settings = {
       ...settings,
       accounts: settings.accounts.map((a) =>
-        a.id === args.id ? { ...a, enabled: args.enabled } : a,
+        a.accountId === args.accountId ? { ...a, enabled: args.enabled } : a,
       ),
     };
     return structuredClone(settings);

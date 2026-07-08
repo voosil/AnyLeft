@@ -8,32 +8,31 @@ use keyring::Entry;
 
 use crate::error::AppResult;
 
-/// Keychain service name. One entry per provider id.
+/// Keychain service name. One entry per account id.
 const SERVICE: &str = "com.voosil.anyleft";
 
-fn entry(provider_id: &str) -> AppResult<Entry> {
-    Ok(Entry::new(SERVICE, provider_id)?)
+fn entry(account_id: &str) -> AppResult<Entry> {
+    Ok(Entry::new(SERVICE, account_id)?)
 }
 
-/// Store (or replace) the API key for a provider.
-pub fn set_key(provider_id: &str, key: &str) -> AppResult<()> {
-    entry(provider_id)?.set_password(key)?;
+/// Store (or replace) the API key for an account.
+pub fn set_key(account_id: &str, key: &str) -> AppResult<()> {
+    entry(account_id)?.set_password(key)?;
     Ok(())
 }
 
 /// Delete a stored key. A missing entry is treated as success (idempotent).
-pub fn delete_key(provider_id: &str) -> AppResult<()> {
-    match entry(provider_id)?.delete_credential() {
+pub fn delete_key(account_id: &str) -> AppResult<()> {
+    match entry(account_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(err) => Err(err.into()),
     }
 }
 
-/// Read a stored key, returning `None` when nothing is stored. Used by real
-/// usage providers when fetching live data (the mock provider ignores it).
-#[allow(dead_code)]
-pub fn get_key(provider_id: &str) -> AppResult<Option<String>> {
-    match entry(provider_id)?.get_password() {
+/// Read a stored key, returning `None` when nothing is stored. Keyed by the
+/// unique account id so several accounts of one provider each keep their own key.
+pub fn get_key(account_id: &str) -> AppResult<Option<String>> {
+    match entry(account_id)?.get_password() {
         Ok(key) => Ok(Some(key)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(err) => Err(err.into()),

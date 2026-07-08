@@ -49,7 +49,7 @@ any-left/
         ├── settings.rs        # persisted settings + immutable update helpers
         ├── catalog.rs         # static provider catalog
         ├── secrets.rs         # keychain-backed API keys
-        ├── providers/         # UsageProvider trait + mock implementation
+        ├── providers/         # UsageProvider trait + real provider implementations
         ├── tray.rs            # menu-bar icon, live %, panel positioning
         └── windows.rs         # show/hide helpers
 ```
@@ -97,7 +97,7 @@ pub trait UsageProvider: Send + Sync {
 }
 ```
 
-**There is no mock data.** Three providers are real integrations:
+**There is no mock data.** Four providers are real integrations:
 
 - **Claude** (`providers/claude.rs`) — reads the local **Claude Code** OAuth login
   (macOS keychain `Claude Code-credentials`, `~/.claude/.credentials.json`, or
@@ -110,6 +110,12 @@ pub trait UsageProvider: Send + Sync {
   `GET https://chatgpt.com/backend-api/wham/usage`, and maps
   `rate_limit.primary_window.used_percent` → **5H**,
   `secondary_window.used_percent` → **WEEK**.
+- **Kimi For Coding** (`providers/kimi.rs`) — reads a Kimi Code API key from the
+  AnyLeft keychain entry or `KIMI_CODE_API_KEY`, calls
+  `GET https://api.kimi.com/coding/v1/usages`, and maps the weekly `usage`
+  object plus the 300-minute `limits` window to **WEEK** / **5H**. If the stored
+  secret is a `kimi-auth` token, or `KIMI_AUTH_TOKEN` is present, it falls back
+  to `POST https://www.kimi.com/apiv2/kimi.gateway.billing.v1.BillingService/GetUsages`.
 - **MiniMax Token Plan** (`providers/minimax.rs`) — reads a MiniMax token from
   the AnyLeft keychain entry, `MINIMAX_TOKEN` / `MINIMAX_API_KEY`, or
   `~/.minimax-config.json`, calls
@@ -118,15 +124,15 @@ pub trait UsageProvider: Send + Sync {
   **WEEK**.
 
 Claude and ChatGPT endpoints follow the
-[OpenUsage](https://github.com/robinebers/openusage) project. MiniMax follows
-the `minimax-status` CLI endpoint.
+[OpenUsage](https://github.com/robinebers/openusage) project. Kimi follows the
+CodexBar Kimi provider notes. MiniMax follows the `minimax-status` CLI endpoint.
 macOS prompts for keychain access on first read.
 
 When a provider can't be read (not logged in, network error, or **not yet
 integrated** for the other catalog entries), that row shows a real **failure
 state** (⚠ + short reason, full message on hover) — never a fabricated number.
 A fresh install connects only the integrated providers (`claude`, `gpt`,
-`minimax`); others can be added from settings and will show the "not yet
+`kimi`, `minimax`); others can be added from settings and will show the "not yet
 integrated" state.
 
 To add a real integration, implement `UsageProvider` (reading an API key with

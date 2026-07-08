@@ -10,7 +10,7 @@ use crate::catalog;
 use crate::error::{AppError, AppResult};
 use crate::models::{AuthMethod, CatalogProvider, Dashboard};
 use crate::secrets;
-use crate::settings::{AppSettings, Preferences};
+use crate::settings::{Account, AppSettings, Preferences};
 use crate::state::AppState;
 use crate::tray;
 use crate::windows;
@@ -41,69 +41,131 @@ pub async fn refresh(app: AppHandle, state: State<'_, AppState>) -> AppResult<Da
     Ok(dashboard)
 }
 
-/// Connect (or re-connect) a provider account. For API-key auth the key is
-/// written to the keychain and only a `has_secret` flag is persisted.
+/// Connect, re-configure, or rename a provider account. A provider may hold
+/// several accounts (e.g. two Kimi logins); single-instance providers (Claude,
+/// ChatGPT — see `catalog::is_single_instance`) are pinned to one.
+///
+/// * `account_id` present → reconfigure that existing account (edit key/label).
+/// * absent, single-instance → the account id equals the provider id.
+/// * absent, multi-instance → a fresh unique account id is minted.
+///
+/// For API-key auth the key is written to the keychain under the account id and
+/// only a `has_secret` flag is persisted. A blank key while reconfiguring keeps
+/// the previously stored one (so the label can be changed without re-pasting).
 #[tauri::command]
 pub fn connect_account(
     app: AppHandle,
     state: State<AppState>,
-    id: String,
+    provider_id: String,
     auth_method: AuthMethod,
     api_key: Option<String>,
+    label: Option<String>,
+    account_id: Option<String>,
 ) -> AppResult<AppSettings> {
-    if !catalog::exists(&id) {
-        return Err(AppError::UnknownProvider(id));
+    if !catalog::exists(&provider_id) {
+        return Err(AppError::UnknownProvider(provider_id));
     }
 
-    let mut has_secret = false;
+    let current = state.settings_snapshot();
+    let target_id = resolve_account_id(&provider_id, account_id, &current);
+    let existing = current.account(&target_id).cloned();
+
+    let mut has_secret = existing.as_ref().map(|a| a.has_secret).unwrap_or(false);
     if auth_method == AuthMethod::Key {
         let key = api_key.as_deref().map(str::trim).unwrap_or_default();
         if key.is_empty() {
-            return Err(AppError::Invalid("API Key 不能为空".into()));
+            if !has_secret {
+                return Err(AppError::Invalid("API Key 不能为空".into()));
+            }
+        } else {
+            secrets::set_key(&target_id, key)?;
+            has_secret = true;
         }
-        secrets::set_key(&id, key)?;
-        has_secret = true;
+    } else {
+        has_secret = false;
     }
 
-    let next = state
-        .settings_snapshot()
-        .with_account(&id, auth_method, has_secret);
-    let saved = state.commit_settings(next)?;
+    let account = Account {
+        account_id: target_id,
+        provider_id,
+        label: normalize_label(label),
+        enabled: existing.as_ref().map(|a| a.enabled).unwrap_or(true),
+        auth_method,
+        has_secret,
+    };
+    let saved = state.commit_settings(current.with_account(account))?;
     tray::refresh_tray(&app);
     Ok(saved)
 }
 
-/// Disconnect a provider, deleting any stored key (best-effort).
+/// Disconnect an account by its id, deleting any stored key (best-effort).
 #[tauri::command]
 pub fn disconnect_account(
     app: AppHandle,
     state: State<AppState>,
-    id: String,
+    account_id: String,
 ) -> AppResult<AppSettings> {
-    if let Err(err) = secrets::delete_key(&id) {
-        eprintln!("[anyleft] failed to delete key for {id}: {err}");
+    if let Err(err) = secrets::delete_key(&account_id) {
+        eprintln!("[anyleft] failed to delete key for {account_id}: {err}");
     }
-    let next = state.settings_snapshot().without_account(&id);
+    let next = state.settings_snapshot().without_account(&account_id);
     let saved = state.commit_settings(next)?;
     tray::refresh_tray(&app);
     Ok(saved)
 }
 
-/// Pause or resume tracking for a connected provider.
+/// Pause or resume tracking for a connected account.
 #[tauri::command]
 pub fn set_account_enabled(
     app: AppHandle,
     state: State<AppState>,
-    id: String,
+    account_id: String,
     enabled: bool,
 ) -> AppResult<AppSettings> {
     let current = state.settings_snapshot();
-    if current.account(&id).is_none() {
-        return Err(AppError::UnknownProvider(id));
+    if current.account(&account_id).is_none() {
+        return Err(AppError::Invalid("账户不存在 / unknown account".into()));
     }
-    let saved = state.commit_settings(current.with_account_enabled(&id, enabled))?;
+    let saved = state.commit_settings(current.with_account_enabled(&account_id, enabled))?;
     tray::refresh_tray(&app);
     Ok(saved)
+}
+
+/// Resolve which account id `connect_account` should write to.
+fn resolve_account_id(
+    provider_id: &str,
+    requested: Option<String>,
+    current: &AppSettings,
+) -> String {
+    if catalog::is_single_instance(provider_id) {
+        return provider_id.to_string();
+    }
+    match requested
+        .as_deref()
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+    {
+        // Only honor a requested id that already exists (reconfigure); otherwise
+        // mint a fresh one so a stale/spoofed id can't collide.
+        Some(id) if current.account(id).is_some() => id.to_string(),
+        _ => generate_account_id(provider_id),
+    }
+}
+
+/// A unique account id, e.g. `kimi-1736380800000`. Uniqueness relies on the
+/// millisecond clock — a user cannot add two accounts within the same tick.
+fn generate_account_id(provider_id: &str) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("{provider_id}-{millis}")
+}
+
+/// Trim a label to `None` when empty so absent and blank read the same.
+fn normalize_label(label: Option<String>) -> Option<String> {
+    label.map(|l| l.trim().to_string()).filter(|l| !l.is_empty())
 }
 
 /// Replace the preferences block.

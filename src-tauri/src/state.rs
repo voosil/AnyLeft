@@ -77,19 +77,22 @@ impl AppState {
     /// message — never fabricated data.
     async fn usage_for(&self, account: &Account, force: bool) -> Result<Usage, String> {
         if !force {
-            if let Some(result) = self.cached_result(&account.id) {
+            if let Some(result) = self.cached_result(&account.account_id) {
                 return result;
             }
         }
         let result = match self.registry.fetch(&self.ctx, account).await {
             Ok(usage) => Ok(usage),
             Err(err) => {
-                eprintln!("[anyleft] usage fetch failed for {}: {err}", account.id);
+                eprintln!(
+                    "[anyleft] usage fetch failed for {}: {err}",
+                    account.account_id
+                );
                 Err(err.to_string())
             }
         };
         self.cache.lock().expect("cache mutex poisoned").insert(
-            account.id.clone(),
+            account.account_id.clone(),
             CacheEntry {
                 at: Instant::now(),
                 result: result.clone(),
@@ -98,9 +101,9 @@ impl AppState {
         result
     }
 
-    fn cached_result(&self, id: &str) -> Option<Result<Usage, String>> {
+    fn cached_result(&self, account_id: &str) -> Option<Result<Usage, String>> {
         let cache = self.cache.lock().expect("cache mutex poisoned");
-        let entry = cache.get(id)?;
+        let entry = cache.get(account_id)?;
         let ttl = if entry.result.is_ok() { OK_TTL } else { ERR_TTL };
         (entry.at.elapsed() < ttl).then(|| entry.result.clone())
     }
@@ -112,13 +115,36 @@ impl AppState {
 
         let mut rows: Vec<DashboardProvider> = Vec::new();
         for account in settings.accounts.iter().filter(|a| a.enabled) {
-            let meta = catalog::get(&account.id)?;
+            let meta = catalog::get(&account.provider_id)?;
+            // Custom label wins over the catalog name so multiple same-provider
+            // accounts stay distinguishable in the panel.
+            let name = account
+                .label
+                .clone()
+                .filter(|l| !l.trim().is_empty())
+                .unwrap_or_else(|| meta.name.clone());
             let row = match self.usage_for(account, force).await {
                 Ok(usage) => {
-                    DashboardProvider::ok(meta.id, meta.name, meta.plan, meta.accent, usage)
+                    let plan = resolve_plan(&account.provider_id, &meta.plan, usage.plan.clone());
+                    DashboardProvider::ok(
+                        account.account_id.clone(),
+                        account.provider_id.clone(),
+                        name,
+                        plan,
+                        meta.accent,
+                        usage,
+                    )
                 }
                 Err(error) => {
-                    DashboardProvider::failed(meta.id, meta.name, meta.plan, meta.accent, error)
+                    let plan = resolve_plan(&account.provider_id, &meta.plan, None);
+                    DashboardProvider::failed(
+                        account.account_id.clone(),
+                        account.provider_id.clone(),
+                        name,
+                        plan,
+                        meta.accent,
+                        error,
+                    )
                 }
             };
             rows.push(row);
@@ -145,4 +171,18 @@ impl AppState {
             highest,
         })
     }
+}
+
+/// Decide the plan label to display for a row. A live value from the provider
+/// always wins. Otherwise, providers whose plan is read live (Claude, ChatGPT)
+/// show nothing when it's unknown — never a static guess — while every other
+/// provider falls back to its catalog plan (a product name, e.g. "Token Plan").
+fn resolve_plan(provider_id: &str, catalog_plan: &str, live_plan: Option<String>) -> Option<String> {
+    if let Some(plan) = live_plan.map(|p| p.trim().to_string()).filter(|p| !p.is_empty()) {
+        return Some(plan);
+    }
+    if catalog::has_dynamic_plan(provider_id) {
+        return None;
+    }
+    Some(catalog_plan.to_string())
 }

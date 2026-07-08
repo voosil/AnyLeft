@@ -47,8 +47,8 @@ impl MinimaxProvider {
 
 #[async_trait]
 impl UsageProvider for MinimaxProvider {
-    async fn fetch(&self, ctx: &ProviderContext, _account: &Account) -> AppResult<Usage> {
-        let token = read_token()?;
+    async fn fetch(&self, ctx: &ProviderContext, account: &Account) -> AppResult<Usage> {
+        let token = read_token(&account.account_id)?;
         let response = ctx
             .http
             .get(USAGE_URL)
@@ -88,6 +88,7 @@ impl UsageProvider for MinimaxProvider {
             five_hour_reset: ts_to_iso(model.end_time),
             weekly: remaining_to_used(model.current_weekly_remaining_percent),
             weekly_reset: ts_to_iso(model.weekly_end_time),
+            plan: None,
         })
     }
 }
@@ -108,8 +109,8 @@ fn remaining_to_used(value: Option<f64>) -> u8 {
     (100.0 - remaining).round() as u8
 }
 
-fn read_token() -> AppResult<String> {
-    if let Some(token) = secrets::get_key("minimax")? {
+fn read_token(account_id: &str) -> AppResult<String> {
+    if let Some(token) = secrets::get_key(account_id)? {
         return Ok(token);
     }
     if let Some(token) = env_token() {

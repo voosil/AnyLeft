@@ -123,10 +123,32 @@ pub fn toggle_panel(app: &AppHandle) {
 /// to the monitor that hosts the menu bar.
 fn position_panel(app: &AppHandle, window: &WebviewWindow) {
     let size = window.outer_size().unwrap_or(FALLBACK_PANEL);
-    let monitor = window
-        .current_monitor()
-        .ok()
-        .flatten()
+    
+    let tray_rect = app.tray_by_id(TRAY_ID).and_then(|t| t.rect().ok().flatten());
+    
+    let monitors = window.available_monitors().unwrap_or_default();
+    let mut target_monitor = None;
+    
+    if let Some(rect) = &tray_rect {
+        for m in &monitors {
+            let scale = m.scale_factor();
+            let p = rect.position.to_physical::<f64>(scale);
+            let m_pos = m.position();
+            let m_size = m.size();
+            let m_x = m_pos.x as f64;
+            let m_y = m_pos.y as f64;
+            let m_w = m_size.width as f64;
+            let m_h = m_size.height as f64;
+            
+            if p.x >= m_x && p.x <= m_x + m_w && p.y >= m_y && p.y <= m_y + m_h {
+                target_monitor = Some(m.clone());
+                break;
+            }
+        }
+    }
+
+    let monitor = target_monitor
+        .or_else(|| window.current_monitor().ok().flatten())
         .or_else(|| window.primary_monitor().ok().flatten());
 
     let (mon_x, mon_y, mon_w, scale) = match monitor.as_ref() {
@@ -140,8 +162,15 @@ fn position_panel(app: &AppHandle, window: &WebviewWindow) {
     };
 
     let margin = EDGE_MARGIN * scale;
-    let (mut x, y) = match tray_icon_anchor(app, scale) {
-        Some(p) => (p.x - size.width as f64 / 2.0, p.y + margin),
+    
+    let (mut x, y) = match tray_rect {
+        Some(rect) => {
+            let pos = rect.position.to_physical::<f64>(scale);
+            let s = rect.size.to_physical::<f64>(scale);
+            let p_x = pos.x + s.width / 2.0;
+            let p_y = pos.y + s.height;
+            (p_x - size.width as f64 / 2.0, p_y + margin)
+        }
         None => (
             mon_x + mon_w - size.width as f64 - margin,
             mon_y + MENU_BAR_HEIGHT * scale,
@@ -155,16 +184,4 @@ fn position_panel(app: &AppHandle, window: &WebviewWindow) {
     let _ = window.set_position(PhysicalPosition::new(x.round(), y.round()));
 }
 
-/// The point directly under the tray icon: horizontally centred on the icon, at
-/// its bottom edge. Read from the icon's live screen rect so every entry point
-/// (tray click, keyboard shortcut) anchors to the same place. `None` when the OS
-/// can't report the rect, letting the caller fall back to a fixed corner.
-fn tray_icon_anchor(app: &AppHandle, scale: f64) -> Option<PhysicalPosition<f64>> {
-    let rect = app.tray_by_id(TRAY_ID)?.rect().ok().flatten()?;
-    let pos = rect.position.to_physical::<f64>(scale);
-    let size = rect.size.to_physical::<f64>(scale);
-    Some(PhysicalPosition::new(
-        pos.x + size.width / 2.0,
-        pos.y + size.height,
-    ))
-}
+

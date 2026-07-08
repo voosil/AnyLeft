@@ -4,14 +4,15 @@ import { AddAccountModal } from "../components/AddAccountModal";
 import { Kbd } from "../components/Kbd";
 import { ProviderBadge } from "../components/ProviderBadge";
 import { Toggle } from "../components/Toggle";
+import { isSingleInstance } from "../providerCaps";
 import { color, font } from "../theme";
-import type { AppSettings, CatalogProvider, Preferences } from "../types";
+import type { Account, AppSettings, CatalogProvider, Preferences } from "../types";
 
 export function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [catalog, setCatalog] = useState<CatalogProvider[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [configuringId, setConfiguringId] = useState<string | null>(null);
+  const [configuring, setConfiguring] = useState<Account | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,10 +42,11 @@ export function Settings() {
     }
   };
 
-  const toggleAccount = (id: string, enabled: boolean) =>
-    guard(() => bridge.setAccountEnabled(id, enabled));
+  const toggleAccount = (accountId: string, enabled: boolean) =>
+    guard(() => bridge.setAccountEnabled(accountId, enabled));
 
-  const disconnectAccount = (id: string) => guard(() => bridge.disconnectAccount(id));
+  const disconnectAccount = (accountId: string) =>
+    guard(() => bridge.disconnectAccount(accountId));
 
   const updatePref = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
     if (!settings) return;
@@ -86,11 +88,17 @@ export function Settings() {
           }}
         >
           {settings?.accounts.map((account) => {
-            const meta = byId[account.id];
+            const meta = byId[account.providerId];
             if (!meta) return null;
+            const label = account.label?.trim();
+            const displayName = label || meta.name;
+            const subtitle = label ? `${meta.name} · ${meta.company}` : meta.company;
+            // Custom naming / re-configuring is for multi-account providers;
+            // Claude & ChatGPT read a fixed local login, so they're excluded.
+            const canConfigure = !isSingleInstance(account.providerId);
             return (
               <div
-                key={account.id}
+                key={account.accountId}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -102,17 +110,24 @@ export function Settings() {
               >
                 <ProviderBadge mono={meta.mono} accent={meta.accent} tint={meta.tint} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5, color: color.ink }}>
-                    {meta.name}
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 13.5,
+                      color: color.ink,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {displayName}
                   </div>
-                  <div style={{ fontSize: 11, color: color.faint }}>
-                    {meta.plan} · {meta.company}
-                  </div>
+                  <div style={{ fontSize: 11, color: color.faint }}>{subtitle}</div>
                 </div>
-                {account.id === "minimax" && (
+                {canConfigure && (
                   <button
                     onClick={() => {
-                      setConfiguringId(account.id);
+                      setConfiguring(account);
                       setModalOpen(true);
                     }}
                     style={{
@@ -132,11 +147,11 @@ export function Settings() {
                 <StatusPill enabled={account.enabled} />
                 <Toggle
                   on={account.enabled}
-                  onToggle={() => toggleAccount(account.id, !account.enabled)}
-                  label={`${meta.name} 开关`}
+                  onToggle={() => toggleAccount(account.accountId, !account.enabled)}
+                  label={`${displayName} 开关`}
                 />
                 <button
-                  onClick={() => disconnectAccount(account.id)}
+                  onClick={() => disconnectAccount(account.accountId)}
                   style={{
                     background: "none",
                     border: "none",
@@ -235,17 +250,19 @@ export function Settings() {
       <AddAccountModal
         open={modalOpen}
         catalog={catalog}
-        connected={settings?.accounts.map((a) => a.id) ?? []}
-        mode={configuringId ? "configure" : "add"}
-        initialProviderId={configuringId ?? undefined}
+        connected={settings?.accounts.map((a) => a.providerId) ?? []}
+        mode={configuring ? "configure" : "add"}
+        initialProviderId={configuring?.providerId}
+        initialAccountId={configuring?.accountId}
+        initialLabel={configuring?.label ?? undefined}
         onClose={() => {
           setModalOpen(false);
-          setConfiguringId(null);
+          setConfiguring(null);
         }}
         onConnected={(next) => {
           setSettings(next);
           setModalOpen(false);
-          setConfiguringId(null);
+          setConfiguring(null);
         }}
       />
     </div>

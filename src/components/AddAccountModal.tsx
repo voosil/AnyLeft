@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { bridge, openExternal } from "../api/bridge";
 import { ProviderBadge } from "./ProviderBadge";
+import { isSingleInstance } from "../providerCaps";
 import { color, font } from "../theme";
 import type { AppSettings, AuthMethod, CatalogProvider } from "../types";
 
@@ -9,7 +10,7 @@ const LOGIN_URLS: Record<string, string> = {
   claude: "https://claude.ai/login",
   gpt: "https://chatgpt.com/",
   glm: "https://open.bigmodel.cn/",
-  kimi: "https://kimi.moonshot.cn/",
+  kimi: "https://www.kimi.com/code/console",
   minimax: "https://platform.minimaxi.com/",
   gemini: "https://gemini.google.com/",
   grok: "https://grok.com/",
@@ -17,12 +18,42 @@ const LOGIN_URLS: Record<string, string> = {
   deepseek: "https://platform.deepseek.com/",
 };
 
+const KEY_ONLY_PROVIDERS = new Set(["kimi", "minimax"]);
+
+function keyInputLabel(providerId: string) {
+  if (providerId === "kimi") return "粘贴 Kimi Code API Key 或 kimi-auth token";
+  if (providerId === "minimax") return "粘贴 MiniMax token";
+  return "粘贴 API Key";
+}
+
+function keyInputPlaceholder(providerId: string) {
+  if (providerId === "kimi") return "Kimi Code API Key / kimi-auth token";
+  if (providerId === "minimax") return "MiniMax token";
+  return "sk-...";
+}
+
+function keyHelpText(providerId: string) {
+  if (providerId === "kimi") {
+    return "凭据仅保存在本机钥匙串，用于读取 Kimi For Coding 用量。";
+  }
+  if (providerId === "minimax") {
+    return "Token 仅保存在本机钥匙串，用于读取 MiniMax Token Plan 用量。";
+  }
+  return "密钥仅保存在本机钥匙串，用于读取用量。";
+}
+
 interface AddAccountModalProps {
   open: boolean;
   catalog: CatalogProvider[];
+  /** Provider ids that already have an account — used to hide single-instance
+   *  providers (Claude/ChatGPT) that are already connected. */
   connected: string[];
   mode?: "add" | "configure";
   initialProviderId?: string;
+  /** Configure mode: the account being edited (so we reconfigure, not add). */
+  initialAccountId?: string;
+  /** Configure mode: the account's existing custom name. */
+  initialLabel?: string;
   onClose: () => void;
   onConnected: (settings: AppSettings) => void;
 }
@@ -33,22 +64,39 @@ export function AddAccountModal({
   connected,
   mode = "add",
   initialProviderId,
+  initialAccountId,
+  initialLabel,
   onClose,
   onConnected,
 }: AddAccountModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [auth, setAuth] = useState<AuthMethod>("key");
   const [apiKey, setApiKey] = useState("");
+  const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const configuring = mode === "configure";
+
+  // Multi-account providers stay addable; single-instance ones drop out once
+  // connected so there's never a second Claude/ChatGPT.
   const addable = useMemo(
-    () => catalog.filter((p) => !connected.includes(p.id)),
+    () => catalog.filter((p) => !(isSingleInstance(p.id) && connected.includes(p.id))),
     [catalog, connected],
   );
   const activeId = initialProviderId ?? selectedId;
   const selected = activeId ? catalog.find((p) => p.id === activeId) ?? null : null;
-  const configuring = mode === "configure";
+
+  // Seed the custom-name field when opening in configure mode.
+  useEffect(() => {
+    if (open && configuring) {
+      setLabel(initialLabel ?? "");
+      setApiKey("");
+      setAuth("key");
+      setError(null);
+      setBusy(false);
+    }
+  }, [open, configuring, initialAccountId, initialLabel]);
 
   if (!open) return null;
 
@@ -56,6 +104,7 @@ export function AddAccountModal({
     setSelectedId(null);
     setAuth("key");
     setApiKey("");
+    setLabel("");
     setError(null);
     setBusy(false);
   };
@@ -67,6 +116,7 @@ export function AddAccountModal({
     setSelectedId(id);
     setAuth("key");
     setApiKey("");
+    setLabel("");
     setError(null);
   };
 
@@ -75,11 +125,14 @@ export function AddAccountModal({
     setBusy(true);
     setError(null);
     try {
-      const nextAuth = selected.id === "minimax" ? "key" : auth;
+      const nextAuth = KEY_ONLY_PROVIDERS.has(selected.id) ? "key" : auth;
+      const supportsLabel = !isSingleInstance(selected.id);
       const next = await bridge.connectAccount(
         selected.id,
         nextAuth,
         nextAuth === "key" ? apiKey : undefined,
+        supportsLabel ? label : undefined,
+        configuring ? initialAccountId : undefined,
       );
       onConnected(next);
       reset();
@@ -155,12 +208,14 @@ export function AddAccountModal({
             provider={selected}
             auth={auth}
             apiKey={apiKey}
+            label={label}
             busy={busy}
             error={error}
             mode={mode}
             onBack={configuring ? undefined : () => setSelectedId(null)}
             onAuth={setAuth}
             onKey={setApiKey}
+            onLabel={setLabel}
             onCancel={handleClose}
             onConnect={connect}
           />
@@ -235,12 +290,14 @@ interface ConnectFormProps {
   provider: CatalogProvider;
   auth: AuthMethod;
   apiKey: string;
+  label: string;
   busy: boolean;
   error: string | null;
   mode: "add" | "configure";
   onBack?: () => void;
   onAuth: (a: AuthMethod) => void;
   onKey: (k: string) => void;
+  onLabel: (l: string) => void;
   onCancel: () => void;
   onConnect: () => void;
 }
@@ -249,18 +306,23 @@ function ConnectForm({
   provider,
   auth,
   apiKey,
+  label,
   busy,
   error,
   mode,
   onBack,
   onAuth,
   onKey,
+  onLabel,
   onCancel,
   onConnect,
 }: ConnectFormProps) {
-  const keyOnly = provider.id === "minimax";
+  const keyOnly = KEY_ONLY_PROVIDERS.has(provider.id);
   const effectiveAuth = keyOnly ? "key" : auth;
   const configuring = mode === "configure";
+  // Custom naming is for multi-account providers (a user may run two Kimis);
+  // single-instance Claude/ChatGPT keep their fixed name.
+  const showLabel = !isSingleInstance(provider.id);
   const segStyle = (active: boolean) => ({
     flex: 1,
     border: "none",
@@ -318,6 +380,33 @@ function ConnectForm({
         </div>
       </div>
 
+      {showLabel && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: color.inkSoft, marginBottom: 8 }}>
+            自定义名称（可选）
+          </div>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => onLabel(e.target.value)}
+            placeholder={`例如：${provider.name} 工作号`}
+            spellCheck={false}
+            autoComplete="off"
+            maxLength={40}
+            style={{
+              width: "100%",
+              padding: "11px 13px",
+              border: `1px solid rgba(51,48,42,.16)`,
+              borderRadius: 10,
+              background: color.inner,
+              fontSize: 13,
+              color: color.ink,
+              outline: "none",
+            }}
+          />
+        </div>
+      )}
+
       {!keyOnly && (
         <>
           <div style={{ fontSize: 12, fontWeight: 600, color: color.inkSoft, marginBottom: 8 }}>
@@ -346,13 +435,13 @@ function ConnectForm({
       {effectiveAuth === "key" ? (
         <>
           <div style={{ marginBottom: 6, fontSize: 12, color: color.muted }}>
-            {provider.id === "minimax" ? "粘贴 MiniMax token" : "粘贴 API Key"}
+            {keyInputLabel(provider.id)}
           </div>
           <input
             type="text"
             value={apiKey}
             onChange={(e) => onKey(e.target.value)}
-            placeholder={provider.id === "minimax" ? "MiniMax token" : "sk-..."}
+            placeholder={keyInputPlaceholder(provider.id)}
             spellCheck={false}
             autoComplete="off"
             style={{
@@ -368,9 +457,8 @@ function ConnectForm({
             }}
           />
           <div style={{ fontSize: 11, color: color.faint, marginTop: 8 }}>
-            {provider.id === "minimax"
-              ? "Token 仅保存在本机钥匙串，用于读取 MiniMax Token Plan 用量。"
-              : "密钥仅保存在本机钥匙串，用于读取用量。"}
+            {keyHelpText(provider.id)}
+            {configuring && " 留空则保留已保存的密钥。"}
           </div>
         </>
       ) : (
@@ -441,7 +529,7 @@ function ConnectForm({
             opacity: busy ? 0.7 : 1,
           }}
         >
-          {busy ? (configuring ? "保存中…" : "连接中…") : configuring ? "保存 token" : "连接账户"}
+          {busy ? (configuring ? "保存中…" : "连接中…") : configuring ? "保存凭据" : "连接账户"}
         </button>
       </div>
     </div>

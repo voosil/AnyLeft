@@ -37,11 +37,21 @@ export const bridge = {
   getDashboard: () => call<Dashboard>("get_dashboard"),
   refresh: () => call<Dashboard>("refresh"),
 
-  connectAccount: (id: string, authMethod: AuthMethod, apiKey?: string) =>
-    call<AppSettings>("connect_account", { id, authMethod, apiKey }),
-  disconnectAccount: (id: string) => call<AppSettings>("disconnect_account", { id }),
-  setAccountEnabled: (id: string, enabled: boolean) =>
-    call<AppSettings>("set_account_enabled", { id, enabled }),
+  /**
+   * Connect, reconfigure, or rename an account. `accountId` reconfigures an
+   * existing one (edit key/label); omit it to add a new account.
+   */
+  connectAccount: (
+    providerId: string,
+    authMethod: AuthMethod,
+    apiKey?: string,
+    label?: string,
+    accountId?: string,
+  ) => call<AppSettings>("connect_account", { providerId, authMethod, apiKey, label, accountId }),
+  disconnectAccount: (accountId: string) =>
+    call<AppSettings>("disconnect_account", { accountId }),
+  setAccountEnabled: (accountId: string, enabled: boolean) =>
+    call<AppSettings>("set_account_enabled", { accountId, enabled }),
   setPreferences: (preferences: Preferences) =>
     call<AppSettings>("set_preferences", { preferences }),
 
