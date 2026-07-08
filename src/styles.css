@@ -75,6 +75,11 @@ button {
     transform: none;
   }
 }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 ::-webkit-scrollbar {
   width: 8px;

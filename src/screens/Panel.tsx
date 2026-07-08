@@ -16,17 +16,29 @@ export function Panel() {
   const settingsLinkRef = useRef<HTMLAnchorElement>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const fetchDashboard = useCallback(async (fetcher: () => Promise<Dashboard>) => {
+    // Mark loading before the await so a re-fetch on focus (or a manual refresh)
+    // clears stale data off the screen — otherwise the previous dashboard
+    // lingers while the new fetch is in flight and the user can mistake it for
+    // current data.
+    setLoading(true);
     try {
-      // Non-forcing: serves the 60s cache so reopening the panel never hammers
-      // provider endpoints. The tray's "刷新用量" menu item forces a fresh fetch.
-      setDashboard(await bridge.getDashboard());
+      setDashboard(await fetcher());
       setError(null);
     } catch (err) {
       setError(String(err));
+    } finally {
+      setLoading(false);
     }
   }, []);
+
+  // Non-forcing: serves the 60s cache so reopening the panel never hammers
+  // provider endpoints.
+  const load = useCallback(() => fetchDashboard(bridge.getDashboard), [fetchDashboard]);
+  // User-initiated refresh always bypasses the cache.
+  const refresh = useCallback(() => fetchDashboard(bridge.refresh), [fetchDashboard]);
 
   useEffect(() => {
     void load();
@@ -40,7 +52,7 @@ export function Panel() {
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
-  useAutoResize(cardRef, [dashboard, error]);
+  useAutoResize(cardRef, [dashboard, error, loading]);
 
   return (
     <div
@@ -98,7 +110,9 @@ export function Panel() {
       </header>
 
       {/* provider rows */}
-      {error ? (
+      {loading ? (
+        <PanelSkeleton />
+      ) : error ? (
         <div style={{ padding: "16px 6px", fontSize: 12, color: color.brown }}>
           无法读取用量 · {error}
         </div>
@@ -117,13 +131,50 @@ export function Panel() {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           padding: "9px 6px 4px",
           marginTop: 5,
           borderTop: `1px solid ${color.hair}`,
           fontSize: 12,
         }}
       >
+        <button
+          onClick={() => void refresh()}
+          disabled={loading}
+          aria-label="刷新用量"
+          title="刷新用量"
+          style={{
+            background: "none",
+            border: "none",
+            padding: 4,
+            marginLeft: -4,
+            cursor: loading ? "default" : "pointer",
+            color: loading ? color.faint : color.muted,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 5,
+            outline: "none",
+            transition: "color .12s ease",
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              animation: loading ? "spin 0.8s linear infinite" : undefined,
+            }}
+          >
+            <path d="M21 12a9 9 0 1 1-3.5-7.1" />
+            <path d="M21 4v5h-5" />
+          </svg>
+        </button>
         <a
           ref={settingsLinkRef}
           href="#settings"
