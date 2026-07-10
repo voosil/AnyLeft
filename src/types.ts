@@ -31,6 +31,8 @@ export interface DashboardProvider {
   fiveHourReset: string | null;
   weekly: number | null;
   weeklyReset: string | null;
+  /** Formatted API credit balance (e.g. "¥100.00"); null for quota-only providers. */
+  balance: string | null;
   /** User-facing failure message; null on success. */
   error: string | null;
 }

@@ -9,6 +9,7 @@
 //! No token or credential blob is ever logged or returned to the frontend.
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -39,7 +40,7 @@ impl Tokens {
     }
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Clone, Default)]
 struct CodexAuth {
     tokens: Option<Tokens>,
     #[serde(rename = "OPENAI_API_KEY")]
@@ -68,39 +69,104 @@ struct UsageResponse {
     rate_limit: Option<RateLimit>,
 }
 
-pub struct CodexProvider;
+pub struct CodexProvider {
+    /// Process-lifetime credential cache. Reading the `Codex Auth` keychain
+    /// item triggers a macOS password prompt, so we read it at most once per
+    /// launch and reuse the result on subsequent fetches. A 401/403 (stale
+    /// credentials, or the user re-logged in elsewhere) invalidates the cache
+    /// so the next fetch re-reads the keychain once.
+    cache: Mutex<Option<CodexAuth>>,
+}
 
 impl CodexProvider {
     pub fn new() -> Self {
-        CodexProvider
+        CodexProvider {
+            cache: Mutex::new(None),
+        }
+    }
+
+    fn cached(&self) -> Option<CodexAuth> {
+        self.cache
+            .lock()
+            .expect("codex cache poisoned")
+            .clone()
+    }
+
+    fn store(&self, auth: CodexAuth) {
+        *self.cache.lock().expect("codex cache poisoned") = Some(auth);
+    }
+
+    fn invalidate(&self) {
+        *self.cache.lock().expect("codex cache poisoned") = None;
+    }
+
+    /// Return cached auth or load it once and remember the result. Hitting the
+    /// keychain happens at most once per launch — later fetches skip past it.
+    fn load(&self) -> AppResult<CodexAuth> {
+        if let Some(auth) = self.cached() {
+            return Ok(auth);
+        }
+        let auth = read_local_auth()?;
+        self.store(auth.clone());
+        Ok(auth)
+    }
+}
+
+/// Build the user-facing error for an auth blob that has no usable access
+/// token. Kept at module scope so `fetch` can reuse it after a refresh fallback.
+fn no_access_error(auth: &CodexAuth) -> AppError {
+    if auth.openai_api_key.is_some() {
+        AppError::Usage("API Key 无法读取订阅用量，请用 `codex` 登录".to_string())
+    } else {
+        AppError::Usage("未找到 Codex 登录凭据，请先运行 `codex` 登录".to_string())
     }
 }
 
 #[async_trait]
 impl UsageProvider for CodexProvider {
     async fn fetch(&self, ctx: &ProviderContext, _account: &Account) -> AppResult<Usage> {
-        let auth = read_local_auth()?;
-        let tokens = auth.tokens.filter(|t| t.access().is_some()).ok_or_else(|| {
-            if auth.openai_api_key.is_some() {
-                AppError::Usage("API Key 无法读取订阅用量，请用 `codex` 登录".to_string())
-            } else {
-                AppError::Usage("未找到 Codex 登录凭据，请先运行 `codex` 登录".to_string())
-            }
-        })?;
-
-        let access = tokens.access().unwrap().to_string();
+        let auth = self.load()?;
+        let tokens = auth
+            .tokens
+            .as_ref()
+            .filter(|t| t.access().is_some())
+            .ok_or_else(|| no_access_error(&auth))?;
+        let access = tokens.access().unwrap();
         let account_id = tokens.account_id.as_deref();
         let plan = plan_from_id_token(tokens.id_token.as_deref());
 
-        let (status, body) = request_usage(ctx, &access, account_id).await?;
-        if status == 401 || status == 403 {
-            let refresh = tokens.refresh_token.as_deref().ok_or_else(|| {
-                AppError::Usage("Codex 会话已过期，请运行 `codex` 重新登录".to_string())
-            })?;
-            let fresh = refresh_token(ctx, refresh).await?;
-            let (retry_status, retry_body) = request_usage(ctx, &fresh, account_id).await?;
-            return finish(retry_status, &retry_body, plan);
+        let (status, body) = request_usage(ctx, access, account_id).await?;
+        if status != 401 && status != 403 {
+            return finish(status, &body, plan);
         }
+
+        // 401/403 — try the refresh token in-memory first so a successful
+        // refresh doesn't even reach the keychain. If that path is exhausted
+        // (no refresh token or the server rejected it), drop the cached auth
+        // and re-read the keychain so a fresh `codex` login is observed.
+        if let Some(refresh) = tokens.refresh_token.as_deref() {
+            if let Ok(fresh) = refresh_token(ctx, refresh).await {
+                let (status, body) = request_usage(ctx, &fresh, account_id).await?;
+                return finish(status, &body, plan);
+            }
+        }
+
+        self.invalidate();
+        let auth = read_local_auth()?;
+        self.store(auth.clone());
+        let tokens = auth
+            .tokens
+            .as_ref()
+            .filter(|t| t.access().is_some())
+            .ok_or_else(|| {
+                AppError::Usage(
+                    "Codex 会话已过期，请运行 `codex` 重新登录".to_string(),
+                )
+            })?;
+        let access = tokens.access().unwrap();
+        let account_id = tokens.account_id.as_deref();
+        let plan = plan_from_id_token(tokens.id_token.as_deref());
+        let (status, body) = request_usage(ctx, access, account_id).await?;
         finish(status, &body, plan)
     }
 }
@@ -111,6 +177,7 @@ fn finish(status: u16, body: &str, plan: Option<String>) -> AppResult<Usage> {
     }
     Ok(Usage {
         plan,
+        balance: None,
         ..parse_usage(body)?
     })
 }
@@ -188,6 +255,7 @@ fn parse_usage(body: &str) -> AppResult<Usage> {
         weekly: to_pct(week.unwrap_or(0.0)),
         weekly_reset: ts_to_iso(week_reset),
         plan: None,
+        balance: None,
     })
 }
 
@@ -309,4 +377,51 @@ fn read_keychain_json() -> Option<String> {
 #[cfg(not(target_os = "macos"))]
 fn read_keychain_json() -> Option<String> {
     None
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn auth_with_access(access: &str) -> CodexAuth {
+        CodexAuth {
+            tokens: Some(Tokens {
+                access_token: Some(access.to_string()),
+                refresh_token: None,
+                account_id: None,
+                id_token: None,
+            }),
+            openai_api_key: None,
+        }
+    }
+
+    #[test]
+    fn cache_is_empty_at_start() {
+        let p = CodexProvider::new();
+        assert!(p.cached().is_none());
+    }
+
+    #[test]
+    fn store_then_cached_round_trips() {
+        let p = CodexProvider::new();
+        p.store(auth_with_access("access-1"));
+        let stored = p.cached().unwrap();
+        assert_eq!(
+            stored.tokens.unwrap().access_token.as_deref(),
+            Some("access-1")
+        );
+    }
+
+    #[test]
+    fn invalidate_clears_cache() {
+        let p = CodexProvider::new();
+        p.store(auth_with_access("access-1"));
+        assert!(p.cached().is_some());
+        p.invalidate();
+        assert!(p.cached().is_none());
+    }
+
+    // End-to-end verification of the keychain-side behaviour — i.e. the panel
+    // only prompts for credentials once after launch — happens at runtime.
 }

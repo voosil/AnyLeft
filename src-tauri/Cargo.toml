@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AnyLeft 剩了么 — track LLM subscription quota usage from the macOS menu bar."
 authors = ["AnyLeft"]
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.80"
 
 # The library the app binary links against. Also lets `tauri build` embed the
 # generated bindings. Keep the crate name stable across platforms.

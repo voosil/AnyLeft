@@ -164,6 +164,7 @@ impl UsageProvider for ClaudeProvider {
             weekly: window_pct(&parsed.seven_day),
             weekly_reset: window_reset(&parsed.seven_day),
             plan: super::pretty_plan(oauth.subscription_type.as_deref()),
+            balance: None,
         })
     }
 }

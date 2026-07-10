@@ -89,6 +89,7 @@ impl UsageProvider for MinimaxProvider {
             weekly: remaining_to_used(model.current_weekly_remaining_percent),
             weekly_reset: ts_to_iso(model.weekly_end_time),
             plan: None,
+            balance: None,
         })
     }
 }

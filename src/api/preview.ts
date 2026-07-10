@@ -106,6 +106,11 @@ const PREVIEW_USAGE: Record<string, { fiveHour: number; weekly: number }> = {
   minimax: { fiveHour: 27, weekly: 14 },
 };
 
+/** Preview-only: API credit balance for pay-as-you-go providers. */
+const PREVIEW_BALANCE: Record<string, string> = {
+  deepseek: "¥100.00",
+};
+
 /** Preview-only: live plan for providers that expose one (Claude). */
 const PREVIEW_PLAN: Record<string, string> = {
   claude: "Max",
@@ -123,7 +128,7 @@ const NEAR_LIMIT = 85;
 const DYNAMIC_PLAN_PROVIDERS = new Set(["claude", "gpt"]);
 
 let settings: AppSettings = {
-  accounts: ["claude", "gpt", "kimi", "minimax"].map((id) => ({
+  accounts: ["claude", "gpt", "kimi", "minimax", "deepseek"].map((id) => ({
     accountId: id,
     providerId: id,
     label: null,
@@ -173,6 +178,22 @@ function buildDashboard(): Dashboard {
             fiveHourReset: null,
             weekly: usage.weekly,
             weeklyReset: null,
+            balance: null,
+            error: null,
+          },
+        ];
+      }
+      const balance = PREVIEW_BALANCE[a.providerId];
+      if (balance) {
+        return [
+          {
+            ...base,
+            plan: resolvePlan(a.providerId, m.plan, undefined),
+            fiveHour: null,
+            fiveHourReset: null,
+            weekly: null,
+            weeklyReset: null,
+            balance,
             error: null,
           },
         ];
@@ -185,18 +206,23 @@ function buildDashboard(): Dashboard {
           fiveHourReset: null,
           weekly: null,
           weeklyReset: null,
+          balance: null,
           error: PREVIEW_ERROR[a.providerId] ?? NOT_INTEGRATED,
         },
       ];
     });
 
   if (settings.preferences.sortByPressure) {
-    const has = (r: DashboardProvider) => (r.fiveHour != null || r.weekly != null ? 1 : 0);
-    const press = (r: DashboardProvider) => Math.max(r.fiveHour ?? 0, r.weekly ?? 0);
+    const has = (r: DashboardProvider) =>
+      r.fiveHour != null || r.weekly != null || r.balance != null ? 1 : 0;
+    const press = (r: DashboardProvider) =>
+      Math.max(r.fiveHour ?? 0, r.weekly ?? 0);
     rows.sort((a, b) => has(b) - has(a) || press(b) - press(a));
   }
 
-  const readable = rows.filter((r) => r.fiveHour != null || r.weekly != null);
+  const readable = rows.filter((r) =>
+    r.fiveHour != null || r.weekly != null || r.balance != null
+  );
   const highest = readable.length
     ? Math.max(...readable.map((r) => Math.max(r.fiveHour ?? 0, r.weekly ?? 0)))
     : null;

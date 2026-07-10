@@ -45,7 +45,8 @@ pub struct CatalogProvider {
     pub tint: String,
 }
 
-/// The live used-quota numbers for one provider, as two rolling windows.
+/// The live used-quota numbers for one provider, as two rolling windows plus an
+/// optional API-credit balance for pay-as-you-go providers (e.g. DeepSeek).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Usage {
@@ -61,6 +62,9 @@ pub struct Usage {
     /// showing a static guess.
     #[serde(default)]
     pub plan: Option<String>,
+    /// Formatted API credit balance (e.g. "¥100.00"), `None` for quota-only providers.
+    #[serde(default)]
+    pub balance: Option<String>,
 }
 
 /// One row in the menu-bar dropdown: catalog metadata joined with live usage.
@@ -70,7 +74,9 @@ pub struct Usage {
 /// `weekly` are present only on a successful read; `error` carries a user-facing
 /// message when the provider couldn't be read (not logged in, network failure,
 /// not yet integrated). Exactly one side is populated. `plan` is `None` when the
-/// subscription type is unknown — the UI then omits the label.
+/// subscription type is unknown — the UI then omits the label. `balance` is
+/// present for pay-as-you-go providers (e.g. DeepSeek) and displayed instead of
+/// the 5h/weekly percentages.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardProvider {
@@ -84,6 +90,7 @@ pub struct DashboardProvider {
     pub five_hour_reset: Option<String>,
     pub weekly: Option<Percent>,
     pub weekly_reset: Option<String>,
+    pub balance: Option<String>,
     pub error: Option<String>,
 }
 
@@ -108,6 +115,7 @@ impl DashboardProvider {
             five_hour_reset: usage.five_hour_reset,
             weekly: Some(usage.weekly),
             weekly_reset: usage.weekly_reset,
+            balance: usage.balance,
             error: None,
         }
     }
@@ -132,13 +140,14 @@ impl DashboardProvider {
             five_hour_reset: None,
             weekly: None,
             weekly_reset: None,
+            balance: None,
             error: Some(error),
         }
     }
 
-    /// Whether this row carries live usage.
+    /// Whether this row carries live data (quota usage or credit balance).
     pub fn has_usage(&self) -> bool {
-        self.five_hour.is_some() || self.weekly.is_some()
+        self.five_hour.is_some() || self.weekly.is_some() || self.balance.is_some()
     }
 
     /// The window under the most pressure — drives sorting and the alert. Rows

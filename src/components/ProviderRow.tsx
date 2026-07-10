@@ -106,6 +106,29 @@ export function ProviderRow({ provider }: { provider: DashboardProvider }) {
           </svg>
           {shortStatus(provider.error!)}
         </span>
+      ) : provider.balance ? (
+        <div
+          style={{
+            flex: "none",
+            width: PCT_COL * 2 + 10,
+            textAlign: "right",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: font.mono,
+              fontSize: 13.5,
+              fontWeight: 600,
+              color: provider.accent,
+            }}
+          >
+            {provider.balance}
+          </span>
+        </div>
       ) : (
         <>
           <div

@@ -191,6 +191,7 @@ fn usage_from_parts(
         weekly: week_pct.unwrap_or(0),
         weekly_reset: weekly.and_then(detail_reset),
         plan: None,
+        balance: None,
     })
 }
 

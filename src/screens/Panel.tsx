@@ -3,7 +3,7 @@ import { bridge } from "../api/bridge";
 import { ProviderRow } from "../components/ProviderRow";
 import { useAutoResize } from "../hooks/useAutoResize";
 import { color, font } from "../theme";
-import type { Dashboard } from "../types";
+import type { Dashboard, DashboardProvider } from "../types";
 
 const PCT_COL = 38;
 
@@ -123,7 +123,7 @@ export function Panel() {
           还没有启用的账户，去设置里添加 →
         </div>
       ) : (
-        dashboard.providers.map((p) => <ProviderRow key={p.accountId} provider={p} />)
+        <ProviderRows providers={dashboard.providers} />
       )}
 
       {/* footer */}
@@ -211,6 +211,42 @@ export function Panel() {
       </footer>
     </div>
   );
+}
+
+/** Split rows by data type: package-quota providers first, then a divider, then API-credit balance providers. */
+function ProviderRows({ providers }: { providers: DashboardProvider[] }) {
+  const quota = providers.filter((p) => !isBalanceProvider(p));
+  const balances = providers.filter((p) => isBalanceProvider(p));
+  const showDivider = quota.length > 0 && balances.length > 0;
+
+  return (
+    <>
+      {quota.map((p) => (
+        <ProviderRow key={p.accountId} provider={p} />
+      ))}
+      {showDivider && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 4px",
+          }}
+        >
+          <div style={{ flex: 1, height: 1, background: color.hair }} />
+          <span style={{ fontSize: 9, color: color.faint, whiteSpace: "nowrap" }}>API 余额</span>
+          <div style={{ flex: 1, height: 1, background: color.hair }} />
+        </div>
+      )}
+      {balances.map((p) => (
+        <ProviderRow key={p.accountId} provider={p} />
+      ))}
+    </>
+  );
+}
+
+function isBalanceProvider(provider: DashboardProvider): boolean {
+  return provider.providerId === "deepseek" || provider.balance != null;
 }
 
 /** Placeholder rows shown before the first fetch resolves. */

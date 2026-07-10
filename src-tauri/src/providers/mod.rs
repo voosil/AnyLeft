@@ -12,6 +12,7 @@
 
 pub mod claude;
 pub mod codex;
+pub mod deepseek;
 pub mod kimi;
 pub mod minimax;
 
@@ -73,6 +74,7 @@ impl ProviderRegistry {
         let mut providers: HashMap<String, Box<dyn UsageProvider>> = HashMap::new();
         providers.insert("claude".to_string(), Box::new(claude::ClaudeProvider::new()));
         providers.insert("gpt".to_string(), Box::new(codex::CodexProvider::new()));
+        providers.insert("deepseek".to_string(), Box::new(deepseek::DeepseekProvider::new()));
         providers.insert("kimi".to_string(), Box::new(kimi::KimiProvider::new()));
         providers.insert("minimax".to_string(), Box::new(minimax::MinimaxProvider::new()));
         ProviderRegistry { providers }
