@@ -35,6 +35,8 @@ export interface DashboardProvider {
   balance: string | null;
   /** User-facing failure message; null on success. */
   error: string | null;
+  /** True when this row is a placeholder still waiting for its fetch to finish. */
+  loading?: boolean;
 }
 
 export interface Dashboard {

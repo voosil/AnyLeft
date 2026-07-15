@@ -92,9 +92,35 @@ pub struct DashboardProvider {
     pub weekly_reset: Option<String>,
     pub balance: Option<String>,
     pub error: Option<String>,
+    #[serde(default)]
+    pub loading: bool,
 }
 
 impl DashboardProvider {
+    /// A placeholder row shown while the provider fetch is still in flight.
+    pub fn loading(
+        account_id: String,
+        provider_id: String,
+        name: String,
+        plan: Option<String>,
+        accent: String,
+    ) -> Self {
+        DashboardProvider {
+            account_id,
+            provider_id,
+            name,
+            plan,
+            accent,
+            enabled: true,
+            five_hour: None,
+            five_hour_reset: None,
+            weekly: None,
+            weekly_reset: None,
+            balance: None,
+            error: None,
+            loading: true,
+        }
+    }
     /// A successfully-read row with live usage.
     pub fn ok(
         account_id: String,
@@ -117,6 +143,7 @@ impl DashboardProvider {
             weekly_reset: usage.weekly_reset,
             balance: usage.balance,
             error: None,
+            loading: false,
         }
     }
 
@@ -142,6 +169,7 @@ impl DashboardProvider {
             weekly_reset: None,
             balance: None,
             error: Some(error),
+            loading: false,
         }
     }
 

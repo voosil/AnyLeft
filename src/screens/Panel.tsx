@@ -15,18 +15,23 @@ const PCT_COL = 38;
 export function Panel() {
   const cardRef = useRef<HTMLDivElement>(null);
   const settingsLinkRef = useRef<HTMLAnchorElement>(null);
-  const [providers, setProviders] = useState<DashboardProvider[]>([]);
+  const [providers, setProviders] = useState<Map<string, DashboardProvider>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const startFetch = useCallback((force: boolean) => {
     setLoading(true);
     setError(null);
-    setProviders([]);
+    setProviders(new Map());
     bridge
       .watchDashboard(
         force,
-        (provider) => setProviders((prev) => [...prev, provider]),
+        (provider) =>
+          setProviders((prev) => {
+            const next = new Map(prev);
+            next.set(provider.accountId, provider);
+            return next;
+          }),
         () => setLoading(false),
       )
       .catch((err) => {
@@ -50,10 +55,10 @@ export function Panel() {
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
-  useAutoResize(cardRef, [providers.length, error, loading]);
+  useAutoResize(cardRef, [providers.size, error, loading]);
 
-  const showSkeleton = loading && providers.length === 0;
-  const hasProviders = providers.length > 0;
+  const showSkeleton = loading && providers.size === 0;
+  const hasProviders = providers.size > 0;
 
   return (
     <div
@@ -213,10 +218,14 @@ export function Panel() {
 }
 
 /** Split rows by data type: package-quota providers first, then a divider, then API-credit balance providers. */
-function ProviderRows({ providers }: { providers: DashboardProvider[] }) {
-  const quota = providers.filter((p) => !isBalanceProvider(p));
-  const balances = providers.filter((p) => isBalanceProvider(p));
-  const showDivider = quota.length > 0 && balances.length > 0;
+function ProviderRows({ providers }: { providers: Map<string, DashboardProvider> }) {
+  const all = Array.from(providers.values());
+  const loaded = all.filter((p) => !p.loading);
+  const loading = all.filter((p) => p.loading);
+  const quota = loaded.filter((p) => !isBalanceProvider(p));
+  const balances = loaded.filter((p) => isBalanceProvider(p));
+  const hasBalanceArea = balances.length > 0 || loading.some((p) => isBalanceProvider(p));
+  const showDivider = quota.length > 0 && hasBalanceArea;
 
   return (
     <>
@@ -240,7 +249,44 @@ function ProviderRows({ providers }: { providers: DashboardProvider[] }) {
       {balances.map((p) => (
         <ProviderRow key={p.accountId} provider={p} />
       ))}
+      {loading.length > 0 && <LoadingRow providers={loading} />}
     </>
+  );
+}
+
+function LoadingRow({ providers }: { providers: DashboardProvider[] }) {
+  const label = providers.length === 1 ? providers[0]!.name : `${providers.length} 个账户`;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "10px 4px",
+      }}
+    >
+      <span
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 2,
+          background: color.hairSoft,
+          flex: "none",
+        }}
+      />
+      <span style={{ fontSize: 12, color: color.faint }}>{label} 余额仍在拉取中…</span>
+      <span
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          border: `2px solid ${color.hairSoft}`,
+          borderTopColor: color.muted,
+          animation: "spin 0.8s linear infinite",
+          marginLeft: "auto",
+        }}
+      />
+    </div>
   );
 }
 

@@ -171,12 +171,26 @@ impl AppState {
     ) -> AppResult<Dashboard> {
         let settings = self.settings_snapshot();
         let accounts: Vec<Account> = settings.accounts.into_iter().filter(|a| a.enabled).collect();
-        let (tx, mut rx) = tokio::sync::mpsc::channel(accounts.len().max(1));
+        let (tx, mut rx) = tokio::sync::mpsc::channel(accounts.len().max(1) * 2);
 
         for account in accounts {
             let state = self.clone();
             let tx = tx.clone();
             tokio::spawn(async move {
+                let meta = catalog::get(&account.provider_id)?;
+                let name = account
+                    .label
+                    .clone()
+                    .filter(|l| !l.trim().is_empty())
+                    .unwrap_or_else(|| meta.name.clone());
+                let loading_row = DashboardProvider::loading(
+                    account.account_id.clone(),
+                    account.provider_id.clone(),
+                    name,
+                    Some(meta.plan.clone()),
+                    meta.accent.clone(),
+                );
+                let _ = tx.send(loading_row).await;
                 let row = row_for_account(&state, &account, force).await?;
                 let _ = tx.send(row).await;
                 Ok::<(), AppError>(())
@@ -189,6 +203,10 @@ impl AppState {
             let _ = channel.send(row.clone());
             rows.push(row);
         }
+
+        // The returned summary only contains finished rows; loading placeholders
+        // were streamed to the UI but shouldn't appear in the final dashboard.
+        let rows: Vec<_> = rows.into_iter().filter(|r| !r.loading).collect();
 
         let highest = rows
             .iter()

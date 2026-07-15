@@ -50,12 +50,15 @@ async function watchDashboard(
     return;
   }
 
-  const dashboard = await call<Dashboard>(force ? "refresh" : "get_dashboard");
-  // Preview mode: simulate streaming so the UI looks the same as the real app.
-  dashboard.providers.forEach((provider, index) => {
-    setTimeout(() => onProvider(provider), index * 120);
-  });
-  setTimeout(() => onComplete?.(dashboard), dashboard.providers.length * 120 + 50);
+    const dashboard = await call<Dashboard>(force ? "refresh" : "get_dashboard");
+    // Preview mode: simulate streaming so the UI looks the same as the real app.
+    dashboard.providers.forEach((provider, index) => {
+      setTimeout(() => {
+        onProvider({ ...provider, loading: true });
+        setTimeout(() => onProvider(provider), index * 120 + 400);
+      }, index * 120);
+    });
+    setTimeout(() => onComplete?.(dashboard), dashboard.providers.length * 240 + 100);
 }
 
 export const bridge = {
