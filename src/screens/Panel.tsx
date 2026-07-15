@@ -18,20 +18,24 @@ export function Panel() {
   const [providers, setProviders] = useState<Map<string, DashboardProvider>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
 
   const startFetch = useCallback((force: boolean) => {
     setLoading(true);
     setError(null);
     setProviders(new Map());
+    setTick((t) => t + 1);
     bridge
       .watchDashboard(
         force,
-        (provider) =>
+        (provider) => {
           setProviders((prev) => {
             const next = new Map(prev);
             next.set(provider.accountId, provider);
             return next;
-          }),
+          });
+          setTick((t) => t + 1);
+        },
         () => setLoading(false),
       )
       .catch((err) => {
@@ -55,7 +59,7 @@ export function Panel() {
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
-  useAutoResize(cardRef, [providers.size, error, loading]);
+  useAutoResize(cardRef, [tick, error, loading]);
 
   const showSkeleton = loading && providers.size === 0;
   const hasProviders = providers.size > 0;
