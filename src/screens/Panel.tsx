@@ -3,42 +3,40 @@ import { bridge } from "../api/bridge";
 import { ProviderRow } from "../components/ProviderRow";
 import { useAutoResize } from "../hooks/useAutoResize";
 import { color, font } from "../theme";
-import type { Dashboard, DashboardProvider } from "../types";
+import type { DashboardProvider } from "../types";
 
 const PCT_COL = 38;
 
 /**
  * The menu-bar dropdown. Loads the dashboard on mount and re-fetches whenever
  * the window regains focus (i.e. each time the tray icon reopens it).
+ * Provider rows are rendered as soon as they arrive, first-finished first-displayed.
  */
 export function Panel() {
   const cardRef = useRef<HTMLDivElement>(null);
   const settingsLinkRef = useRef<HTMLAnchorElement>(null);
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [providers, setProviders] = useState<DashboardProvider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = useCallback(async (fetcher: () => Promise<Dashboard>) => {
-    // Mark loading before the await so a re-fetch on focus (or a manual refresh)
-    // clears stale data off the screen — otherwise the previous dashboard
-    // lingers while the new fetch is in flight and the user can mistake it for
-    // current data.
+  const startFetch = useCallback((force: boolean) => {
     setLoading(true);
-    try {
-      setDashboard(await fetcher());
-      setError(null);
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    setProviders([]);
+    bridge
+      .watchDashboard(
+        force,
+        (provider) => setProviders((prev) => [...prev, provider]),
+        () => setLoading(false),
+      )
+      .catch((err) => {
+        setError(String(err));
+        setLoading(false);
+      });
   }, []);
 
-  // Non-forcing: serves the 60s cache so reopening the panel never hammers
-  // provider endpoints.
-  const load = useCallback(() => fetchDashboard(bridge.getDashboard), [fetchDashboard]);
-  // User-initiated refresh always bypasses the cache.
-  const refresh = useCallback(() => fetchDashboard(bridge.refresh), [fetchDashboard]);
+  const load = useCallback(() => startFetch(false), [startFetch]);
+  const refresh = useCallback(() => startFetch(true), [startFetch]);
 
   useEffect(() => {
     void load();
@@ -52,7 +50,10 @@ export function Panel() {
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
-  useAutoResize(cardRef, [dashboard, error, loading]);
+  useAutoResize(cardRef, [providers.length, error, loading]);
+
+  const showSkeleton = loading && providers.length === 0;
+  const hasProviders = providers.length > 0;
 
   return (
     <div
@@ -110,20 +111,18 @@ export function Panel() {
       </header>
 
       {/* provider rows */}
-      {loading ? (
-        <PanelSkeleton />
-      ) : error ? (
+      {error ? (
         <div style={{ padding: "16px 6px", fontSize: 12, color: color.brown }}>
           无法读取用量 · {error}
         </div>
-      ) : !dashboard ? (
+      ) : showSkeleton ? (
         <PanelSkeleton />
-      ) : dashboard.providers.length === 0 ? (
+      ) : !hasProviders ? (
         <div style={{ padding: "18px 6px", fontSize: 12.5, color: color.faint }}>
           还没有启用的账户，去设置里添加 →
         </div>
       ) : (
-        <ProviderRows providers={dashboard.providers} />
+        <ProviderRows providers={providers} />
       )}
 
       {/* footer */}

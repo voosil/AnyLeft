@@ -4,11 +4,11 @@
 //! it, refreshes the menu-bar title, and returns the fresh settings so the UI
 //! can render from a single source of truth.
 
-use tauri::{AppHandle, State};
+use tauri::{ipc::Channel, AppHandle, State};
 
 use crate::catalog;
 use crate::error::{AppError, AppResult};
-use crate::models::{AuthMethod, CatalogProvider, Dashboard};
+use crate::models::{AuthMethod, CatalogProvider, Dashboard, DashboardProvider};
 use crate::secrets;
 use crate::settings::{Account, AppSettings, Preferences};
 use crate::state::AppState;
@@ -29,14 +29,21 @@ pub fn get_settings(state: State<AppState>) -> AppSettings {
 
 /// The panel payload (enabled providers + live usage, served from cache).
 #[tauri::command]
-pub async fn get_dashboard(state: State<'_, AppState>) -> AppResult<Dashboard> {
-    state.dashboard(false).await
+pub async fn get_dashboard(
+    channel: Channel<DashboardProvider>,
+    state: State<'_, AppState>,
+) -> AppResult<Dashboard> {
+    state.stream_dashboard(false, channel).await
 }
 
 /// Force a fresh usage fetch and update the menu-bar number.
 #[tauri::command]
-pub async fn refresh(app: AppHandle, state: State<'_, AppState>) -> AppResult<Dashboard> {
-    let dashboard = state.dashboard(true).await?;
+pub async fn refresh(
+    app: AppHandle,
+    channel: Channel<DashboardProvider>,
+    state: State<'_, AppState>,
+) -> AppResult<Dashboard> {
+    let dashboard = state.stream_dashboard(true, channel).await?;
     tray::refresh_tray(&app);
     Ok(dashboard)
 }

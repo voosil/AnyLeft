@@ -11,6 +11,7 @@ import type {
   AuthMethod,
   CatalogProvider,
   Dashboard,
+  DashboardProvider,
   Preferences,
 } from "../types";
 import { previewBackend, type PreviewCommand } from "./preview";
@@ -31,11 +32,60 @@ async function call<T>(command: PreviewCommand, args?: Record<string, unknown>):
   return handler(args);
 }
 
+/**
+ * Stream the dashboard one provider at a time as soon as each fetch completes.
+ * `onProvider` is called for every row; `onComplete` is called once with the
+ * final summary (highest/near-limit) after every provider has finished.
+ */
+async function watchDashboard(
+  force: boolean,
+  onProvider: (provider: DashboardProvider) => void,
+  onComplete?: (dashboard: Dashboard) => void,
+): Promise<void> {
+  if (isTauri()) {
+    const { Channel } = await import("@tauri-apps/api/core");
+    const channel = new Channel(onProvider);
+    const dashboard = await call<Dashboard>(force ? "refresh" : "get_dashboard", { channel });
+    onComplete?.(dashboard);
+    return;
+  }
+
+  const dashboard = await call<Dashboard>(force ? "refresh" : "get_dashboard");
+  // Preview mode: simulate streaming so the UI looks the same as the real app.
+  dashboard.providers.forEach((provider, index) => {
+    setTimeout(() => onProvider(provider), index * 120);
+  });
+  setTimeout(() => onComplete?.(dashboard), dashboard.providers.length * 120 + 50);
+}
+
 export const bridge = {
   getCatalog: () => call<CatalogProvider[]>("get_catalog"),
   getSettings: () => call<AppSettings>("get_settings"),
-  getDashboard: () => call<Dashboard>("get_dashboard"),
-  refresh: () => call<Dashboard>("refresh"),
+  /**
+   * Stream the dashboard one provider at a time as soon as each fetch completes.
+   * `force=false` serves the cache; `force=true` bypasses it.
+   */
+  watchDashboard: (
+    force: boolean,
+    onProvider: (provider: DashboardProvider) => void,
+    onComplete?: (dashboard: Dashboard) => void,
+  ) => watchDashboard(force, onProvider, onComplete),
+  /**
+   * Load the dashboard (cached). Rows are delivered one by one via `onProvider`;
+   * the final summary is delivered via `onComplete`.
+   */
+  getDashboard: (
+    onProvider: (provider: DashboardProvider) => void,
+    onComplete?: (dashboard: Dashboard) => void,
+  ) => watchDashboard(false, onProvider, onComplete),
+  /**
+   * Force a fresh dashboard fetch. Rows are delivered one by one via `onProvider`;
+   * the final summary is delivered via `onComplete`.
+   */
+  refresh: (
+    onProvider: (provider: DashboardProvider) => void,
+    onComplete?: (dashboard: Dashboard) => void,
+  ) => watchDashboard(true, onProvider, onComplete),
 
   /**
    * Connect, reconfigure, or rename an account. `accountId` reconfigures an

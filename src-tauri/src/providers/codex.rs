@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ProviderContext, UsageProvider};
 use crate::error::{AppError, AppResult};
@@ -55,19 +55,19 @@ struct RefreshResponse {
     access_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Window {
     used_percent: Option<f64>,
     reset_at: Option<i64>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct RateLimit {
     primary_window: Option<Window>,
     secondary_window: Option<Window>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct UsageResponse {
     rate_limit: Option<RateLimit>,
 }
@@ -230,36 +230,57 @@ fn base64url_decode(input: &str) -> Option<Vec<u8>> {
 fn parse_usage(body: &str) -> AppResult<Usage> {
     let parsed: UsageResponse = serde_json::from_str(body)
         .map_err(|err| AppError::Usage(format!("Codex 用量解析失败：{err}")))?;
-    let rate_limit = parsed.rate_limit;
-    let five = rate_limit
-        .as_ref()
-        .and_then(|r| r.primary_window.as_ref())
-        .and_then(|w| w.used_percent);
-    let week = rate_limit
-        .as_ref()
-        .and_then(|r| r.secondary_window.as_ref())
-        .and_then(|w| w.used_percent);
-
-    let five_reset = rate_limit
-        .as_ref()
-        .and_then(|r| r.primary_window.as_ref())
-        .and_then(|w| w.reset_at);
-    let week_reset = rate_limit
-        .as_ref()
-        .and_then(|r| r.secondary_window.as_ref())
-        .and_then(|w| w.reset_at);
+    let (five, week) = classify_windows(parsed.rate_limit.as_ref());
 
     if five.is_none() && week.is_none() {
         return Err(AppError::Usage("Codex 未返回用量窗口".to_string()));
     }
     Ok(Usage {
-        five_hour: five.map(to_pct),
-        five_hour_reset: ts_to_iso(five_reset),
-        weekly: to_pct(week.unwrap_or(0.0)),
-        weekly_reset: ts_to_iso(week_reset),
+        five_hour: five.and_then(|w| w.used_percent).map(to_pct),
+        five_hour_reset: five.and_then(|w| ts_to_iso(w.reset_at)),
+        weekly: to_pct(week.and_then(|w| w.used_percent).unwrap_or(0.0)),
+        weekly_reset: week.and_then(|w| ts_to_iso(w.reset_at)),
         plan: None,
         balance: None,
     })
+}
+
+/// Classify the two windows by their reset time, not by their field name.
+/// ChatGPT no longer has a 5-hour window; a single returned window is treated
+/// as weekly, and if one window resets in >24h while the other resets sooner,
+/// the longer one is the weekly window.
+fn classify_windows(rate_limit: Option<&RateLimit>) -> (Option<&Window>, Option<&Window>) {
+    let rate_limit = match rate_limit {
+        Some(r) => r,
+        None => return (None, None),
+    };
+
+    let primary = rate_limit.primary_window.as_ref();
+    let secondary = rate_limit.secondary_window.as_ref();
+
+    let is_weekly = |w: &Window| -> bool {
+        w.reset_at
+            .map(|ts| {
+                let now = chrono::Utc::now().timestamp();
+                ts - now > 24 * 3600
+            })
+            .unwrap_or(false)
+    };
+
+    match (primary, secondary) {
+        (Some(p), None) => (None, Some(p)),
+        (None, Some(s)) => (None, Some(s)),
+        (Some(p), Some(s)) => {
+            if is_weekly(p) && !is_weekly(s) {
+                (Some(s), Some(p))
+            } else if is_weekly(s) && !is_weekly(p) {
+                (Some(p), Some(s))
+            } else {
+                (Some(p), Some(s))
+            }
+        }
+        (None, None) => (None, None),
+    }
 }
 
 fn ts_to_iso(ts: Option<i64>) -> Option<String> {
@@ -427,4 +448,51 @@ mod tests {
 
     // End-to-end verification of the keychain-side behaviour — i.e. the panel
     // only prompts for credentials once after launch — happens at runtime.
+
+    #[test]
+    fn treats_single_window_as_weekly() {
+        let now = chrono::Utc::now().timestamp();
+        let rate_limit = RateLimit {
+            primary_window: Some(Window {
+                used_percent: Some(42.0),
+                reset_at: Some(now + 7 * 24 * 3600),
+            }),
+            secondary_window: None,
+        };
+        let usage = parse_usage(
+            &serde_json::to_string(&UsageResponse {
+                rate_limit: Some(rate_limit),
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(usage.five_hour, None);
+        assert_eq!(usage.weekly, 42);
+    }
+
+    #[test]
+    fn classifies_windows_by_reset_time() {
+        let now = chrono::Utc::now().timestamp();
+        let rate_limit = RateLimit {
+            primary_window: Some(Window {
+                used_percent: Some(10.0),
+                reset_at: Some(now + 7 * 24 * 3600),
+            }),
+            secondary_window: Some(Window {
+                used_percent: Some(80.0),
+                reset_at: Some(now + 4 * 3600),
+            }),
+        };
+        let usage = parse_usage(
+            &serde_json::to_string(&UsageResponse {
+                rate_limit: Some(rate_limit),
+            })
+            .unwrap(),
+        )
+        .unwrap();
+        // primary window resets in a week → weekly
+        // secondary window resets in 4h → 5h
+        assert_eq!(usage.five_hour, Some(80));
+        assert_eq!(usage.weekly, 10);
+    }
 }

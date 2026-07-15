@@ -1,6 +1,6 @@
 [package]
 name = "anyleft"
-version = "0.1.0"
+version = "0.1.1"
 description = "AnyLeft 剩了么 — track LLM subscription quota usage from the macOS menu bar."
 authors = ["AnyLeft"]
 edition = "2021"
@@ -28,6 +28,7 @@ keyring = { version = "3", features = ["apple-native"] }
 async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 chrono = "0.4.45"
+tokio = { version = "1", features = ["rt", "sync"] }
 
 [features]
 # Kept for parity with the Tauri template; production builds enable this.
