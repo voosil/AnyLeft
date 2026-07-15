@@ -3,7 +3,7 @@
 //! Reads the local **Claude Code** OAuth login (macOS keychain item
 //! `Claude Code-credentials`, or `~/.claude/.credentials.json`, or the
 //! `CLAUDE_CODE_OAUTH_TOKEN` env var), refreshes the token if it is about to
-//! expire, then calls Anthropic's OAuth usage endpoint and maps the two rolling
+//! expire, then calls Anthropic's OAuth usage endpoint and maps the rolling
 //! windows onto the panel's 5H / WEEK columns.
 //!
 //! Approach and endpoints follow the OpenUsage project's Claude provider.
@@ -161,7 +161,7 @@ impl UsageProvider for ClaudeProvider {
         Ok(Usage {
             five_hour: window_pct(&parsed.five_hour),
             five_hour_reset: window_reset(&parsed.five_hour),
-            weekly: window_pct(&parsed.seven_day),
+            weekly: window_pct(&parsed.seven_day).unwrap_or(0),
             weekly_reset: window_reset(&parsed.seven_day),
             plan: super::pretty_plan(oauth.subscription_type.as_deref()),
             balance: None,
@@ -187,9 +187,9 @@ async fn request_usage(ctx: &ProviderContext, token: &str) -> AppResult<(u16, St
     Ok((status, body))
 }
 
-fn window_pct(window: &Option<UsageWindow>) -> u8 {
-    let raw = window.as_ref().and_then(|w| w.utilization).unwrap_or(0.0);
-    raw.round().clamp(0.0, 100.0) as u8
+fn window_pct(window: &Option<UsageWindow>) -> Option<u8> {
+    let raw = window.as_ref().and_then(|w| w.utilization)?;
+    Some(raw.round().clamp(0.0, 100.0) as u8)
 }
 
 fn window_reset(window: &Option<UsageWindow>) -> Option<String> {

@@ -50,8 +50,8 @@ pub struct CatalogProvider {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Usage {
-    /// Percentage of the 5-hour window consumed.
-    pub five_hour: Percent,
+    /// Percentage of the 5-hour window consumed, when the provider exposes one.
+    pub five_hour: Option<Percent>,
     pub five_hour_reset: Option<String>,
     /// Percentage of the weekly window consumed.
     pub weekly: Percent,
@@ -111,7 +111,7 @@ impl DashboardProvider {
             plan,
             accent,
             enabled: true,
-            five_hour: Some(usage.five_hour),
+            five_hour: usage.five_hour,
             five_hour_reset: usage.five_hour_reset,
             weekly: Some(usage.weekly),
             weekly_reset: usage.weekly_reset,

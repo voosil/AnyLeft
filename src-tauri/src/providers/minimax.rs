@@ -84,7 +84,7 @@ impl UsageProvider for MinimaxProvider {
             .ok_or_else(|| AppError::Usage("MiniMax 未返回 Token Plan 用量".to_string()))?;
 
         Ok(Usage {
-            five_hour: remaining_to_used(model.current_interval_remaining_percent),
+            five_hour: Some(remaining_to_used(model.current_interval_remaining_percent)),
             five_hour_reset: ts_to_iso(model.end_time),
             weekly: remaining_to_used(model.current_weekly_remaining_percent),
             weekly_reset: ts_to_iso(model.weekly_end_time),

@@ -146,10 +146,10 @@ export function ProviderRow({ provider }: { provider: DashboardProvider }) {
                 fontFamily: font.mono,
                 fontSize: 13.5,
                 fontWeight: 600,
-                color: provider.accent,
+                color: provider.fiveHour == null ? color.faint : provider.accent,
               }}
             >
-              {remainingPercent(provider.fiveHour)}%
+              {provider.fiveHour == null ? "—" : `${remainingPercent(provider.fiveHour)}%`}
             </span>
             {provider.fiveHourReset && (
               <span

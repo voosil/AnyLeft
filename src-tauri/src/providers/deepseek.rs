@@ -86,7 +86,7 @@ impl UsageProvider for DeepseekProvider {
         let balance = format_balance(currency, amount);
 
         Ok(Usage {
-            five_hour: 0,
+            five_hour: None,
             five_hour_reset: None,
             weekly: 0,
             weekly_reset: None,

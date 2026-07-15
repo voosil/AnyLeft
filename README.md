@@ -2,7 +2,7 @@
 
 A macOS **menu-bar app** that tracks how much of your subscription quota is left
 across LLM providers — Claude, ChatGPT, GLM, Kimi, MiniMax, Gemini, Grok, Cursor,
-DeepSeek. Click the menu-bar icon to see every provider's **5-hour** and **weekly**
+DeepSeek. Click the menu-bar icon to see each provider's **5-hour** and/or **weekly**
 usage at a glance.
 
 Built with **Tauri v2 + React/Vite**, with a **Rust native bridge** for state,
@@ -108,8 +108,8 @@ pub trait UsageProvider: Send + Sync {
   (`~/.codex/auth.json`, `~/.config/codex/auth.json`, `$CODEX_HOME/auth.json`, or
   keychain `Codex Auth`), refreshes on a 401, calls
   `GET https://chatgpt.com/backend-api/wham/usage`, and maps
-  `rate_limit.primary_window.used_percent` → **5H**,
-  `secondary_window.used_percent` → **WEEK**.
+  `rate_limit.secondary_window.used_percent` → **WEEK**.
+  *(ChatGPT no longer exposes a separate 5-hour window.)*
 - **Kimi For Coding** (`providers/kimi.rs`) — reads a Kimi Code API key from the
   AnyLeft keychain entry or `KIMI_CODE_API_KEY`, calls
   `GET https://api.kimi.com/coding/v1/usages`, and maps the weekly `usage`

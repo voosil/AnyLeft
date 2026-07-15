@@ -186,7 +186,7 @@ fn usage_from_parts(
     }
 
     Ok(Usage {
-        five_hour: five_pct.unwrap_or(0),
+        five_hour: five_pct,
         five_hour_reset: five_hour.and_then(detail_reset),
         weekly: week_pct.unwrap_or(0),
         weekly_reset: weekly.and_then(detail_reset),
@@ -304,7 +304,7 @@ mod tests {
         }"#;
 
         let usage = parse_api_usage(body).unwrap();
-        assert_eq!(usage.five_hour, 70);
+        assert_eq!(usage.five_hour, Some(70));
         assert_eq!(usage.weekly, 10);
         assert_eq!(
             usage.five_hour_reset.as_deref(),
@@ -338,7 +338,7 @@ mod tests {
         }"#;
 
         let usage = parse_web_usage(body).unwrap();
-        assert_eq!(usage.five_hour, 38);
+        assert_eq!(usage.five_hour, Some(38));
         assert_eq!(usage.weekly, 25);
     }
 }

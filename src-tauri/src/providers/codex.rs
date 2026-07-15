@@ -3,7 +3,10 @@
 //! Reads the local **Codex CLI** login (`~/.codex/auth.json`,
 //! `~/.config/codex/auth.json`, `$CODEX_HOME/auth.json`, or the macOS keychain
 //! item `Codex Auth`), refreshes the token on a 401, then calls ChatGPT's usage
-//! endpoint and maps the two rolling windows onto the panel's 5H / WEEK columns.
+//! endpoint and maps the weekly rolling window onto the panel's WEEK column.
+//!
+//! (ChatGPT no longer exposes a separate 5-hour window; only the weekly window
+//! is reported.)
 //!
 //! Approach and endpoints follow the OpenUsage project's Codex provider.
 //! No token or credential blob is ever logged or returned to the frontend.
@@ -250,7 +253,7 @@ fn parse_usage(body: &str) -> AppResult<Usage> {
         return Err(AppError::Usage("Codex 未返回用量窗口".to_string()));
     }
     Ok(Usage {
-        five_hour: to_pct(five.unwrap_or(0.0)),
+        five_hour: five.map(to_pct),
         five_hour_reset: ts_to_iso(five_reset),
         weekly: to_pct(week.unwrap_or(0.0)),
         weekly_reset: ts_to_iso(week_reset),
