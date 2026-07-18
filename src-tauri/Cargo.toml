@@ -1,6 +1,6 @@
 [package]
 name = "anyleft"
-version = "0.1.2"
+version = "0.1.3"
 description = "AnyLeft 剩了么 — track LLM subscription quota usage from the macOS menu bar."
 authors = ["AnyLeft"]
 edition = "2021"
