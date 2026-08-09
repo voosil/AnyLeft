@@ -1,8 +1,8 @@
-//! Keychain-backed storage for provider API keys.
+//! OS credential-store-backed storage for provider API keys.
 //!
-//! The design promises that "密钥仅保存在本机钥匙串" — keys are only stored in
-//! the local keychain. We never persist a key to the settings JSON or return it
-//! to the frontend; only a `has_secret` boolean is ever exposed.
+//! Keys are stored in macOS Keychain or Windows Credential Manager. We never
+//! persist a key to the settings JSON or return it to the frontend; only a
+//! `has_secret` boolean is ever exposed.
 //!
 //! Reading a keychain item triggers a macOS password prompt on first access,
 //! so every successful read (and the confirmed "no entry" result) is cached

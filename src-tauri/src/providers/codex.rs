@@ -22,6 +22,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::Usage;
 use crate::settings::Account;
 
+#[cfg(target_os = "macos")]
 const KEYCHAIN_SERVICE: &str = "Codex Auth";
 const USAGE_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
 const REFRESH_URL: &str = "https://auth.openai.com/oauth/token";
@@ -359,8 +360,7 @@ fn auth_paths() -> Vec<PathBuf> {
         return vec![Path::new(&home).join("auth.json")];
     }
     let mut paths = Vec::new();
-    if let Some(home) = std::env::var_os("HOME") {
-        let home = Path::new(&home);
+    if let Some(home) = super::home_dir() {
         paths.push(home.join(".config/codex/auth.json"));
         paths.push(home.join(".codex/auth.json"));
     }

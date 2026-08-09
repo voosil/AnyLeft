@@ -31,10 +31,19 @@ fn settings_path(app: &tauri::App) -> Result<PathBuf, Box<dyn std::error::Error>
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_nspanel::init())
+    let builder = tauri::Builder::default();
+
+    // The native NSPanel plugin cannot be linked on Windows. The platform
+    // fallback uses the regular Tauri window APIs instead.
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
+    builder
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -49,7 +58,8 @@ pub fn run() {
             let config_path = settings_path(app)?;
             app.manage(AppState::new(config_path));
 
-            // A menu-bar app: no Dock icon, no app-switcher entry.
+            // A menu-bar app on macOS: no Dock icon or app-switcher entry.
+            // Windows keeps the process reachable through its system tray icon.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
@@ -57,14 +67,20 @@ pub fn run() {
             tray::create(app.handle())?;
             tray::refresh_tray(app.handle());
 
-            // Summon-panel global shortcut (⌘⇧U). Non-fatal if it can't bind.
-            let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyU);
+            // Summon-panel global shortcut (⌘⇧U on macOS, Ctrl+Shift+U on
+            // Windows). Non-fatal if another app already owns it.
+            let command_or_control = if cfg!(target_os = "macos") {
+                Modifiers::SUPER
+            } else {
+                Modifiers::CONTROL
+            };
+            let shortcut = Shortcut::new(Some(command_or_control | Modifiers::SHIFT), Code::KeyU);
             if let Err(err) = app.global_shortcut().register(shortcut) {
                 eprintln!("[anyleft] could not register panel shortcut: {err}");
             }
 
-            // Promote the panel to a non-activating NSPanel so it can float over
-            // another app's full-screen Space; this also wires click-outside-to-close.
+            // macOS promotes this to an NSPanel. Windows keeps the configured
+            // borderless always-on-top window and wires click-outside-to-close.
             if let Some(panel) = app.get_webview_window(PANEL_LABEL) {
                 windows::configure_overlay_panel(app.handle(), &panel)?;
             }

@@ -53,8 +53,8 @@
     "active": true,
     "targets": "all",
     "category": "Productivity",
-    "shortDescription": "Track LLM subscription quota usage from your menu bar.",
-    "longDescription": "AnyLeft 剩了么 is a macOS menu-bar app that tracks how much of your subscription quota is left across LLM providers (Claude, ChatGPT, GLM, Kimi, MiniMax and more).",
+    "shortDescription": "Track LLM subscription quota usage from a status icon.",
+    "longDescription": "AnyLeft 剩了么 is a macOS menu-bar and Windows system-tray app that tracks how much of your subscription quota is left across LLM providers (Claude, ChatGPT, GLM, Kimi, MiniMax and more).",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -64,6 +64,11 @@
     ],
     "macOS": {
       "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   },
   "plugins": {}

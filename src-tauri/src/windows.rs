@@ -7,6 +7,8 @@
 //! the user off to a different Space.
 
 use tauri::{AppHandle, Manager, WebviewWindow};
+
+#[cfg(target_os = "macos")]
 use tauri_nspanel::{ManagerExt, WebviewWindowExt};
 
 pub const PANEL_LABEL: &str = "panel";
@@ -14,18 +16,21 @@ pub const SETTINGS_LABEL: &str = "settings";
 
 /// `NSFloatingWindowLevel` — above ordinary windows, below the menu bar.
 #[allow(non_upper_case_globals)]
+#[cfg(target_os = "macos")]
 const NS_FLOATING_WINDOW_LEVEL: i32 = 4;
 
 /// `NSWindowStyleMaskNonactivatingPanel` — lets the panel take key focus (so its
 /// inputs work) without activating the app, which is what would otherwise yank
 /// the user off a full-screen Space.
 #[allow(non_upper_case_globals)]
+#[cfg(target_os = "macos")]
 const NS_NONACTIVATING_PANEL_MASK: i32 = 1 << 7;
 
 /// Promote the menu-bar panel window into a non-activating `NSPanel` that floats
 /// over full-screen spaces, and wire "resign key" to hide it (click-outside to
 /// close). Call once, at setup.
 #[allow(deprecated)]
+#[cfg(target_os = "macos")]
 pub fn configure_overlay_panel(
     app: &AppHandle,
     window: &WebviewWindow,
@@ -61,6 +66,22 @@ pub fn configure_overlay_panel(
     Ok(())
 }
 
+/// Configure the regular borderless Tauri window used as the Windows panel.
+/// Hiding it on focus loss gives the same click-outside dismissal as NSPanel.
+#[cfg(not(target_os = "macos"))]
+pub fn configure_overlay_panel(
+    app: &AppHandle,
+    window: &WebviewWindow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let handle = app.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::Focused(false) = event {
+            hide_panel(&handle);
+        }
+    });
+    Ok(())
+}
+
 /// Reveal and focus the settings window; hide the panel behind it.
 pub fn show_settings(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window(SETTINGS_LABEL) {
@@ -80,9 +101,49 @@ pub fn hide_settings(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Hide the menu-bar panel by ordering it out (keeps the window alive).
+/// Whether the panel is currently visible.
+#[cfg(target_os = "macos")]
+pub fn panel_is_visible(app: &AppHandle) -> bool {
+    app.get_webview_panel(PANEL_LABEL)
+        .map(|panel| panel.is_visible())
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn panel_is_visible(app: &AppHandle) -> bool {
+    app.get_webview_window(PANEL_LABEL)
+        .and_then(|window| window.is_visible().ok())
+        .unwrap_or(false)
+}
+
+/// Reveal the panel using the native implementation for the current platform.
+#[cfg(target_os = "macos")]
+pub fn show_panel(app: &AppHandle) {
+    if let Ok(panel) = app.get_webview_panel(PANEL_LABEL) {
+        panel.show();
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn show_panel(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(PANEL_LABEL) {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Hide the menu-bar/system-tray panel without destroying it.
+#[cfg(target_os = "macos")]
 pub fn hide_panel(app: &AppHandle) {
     if let Ok(panel) = app.get_webview_panel(PANEL_LABEL) {
         panel.order_out(None);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn hide_panel(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(PANEL_LABEL) {
+        let _ = window.hide();
     }
 }

@@ -6,6 +6,7 @@ import { color, font } from "../theme";
 import type { DashboardProvider } from "../types";
 
 const PCT_COL = 38;
+const IS_MAC = navigator.userAgent.includes("Mac");
 
 /**
  * The menu-bar dropdown. Loads the dashboard on mount and re-fetches whenever
@@ -213,7 +214,7 @@ export function Panel() {
               padding: "2px 6px",
             }}
           >
-            ⌘,
+            {IS_MAC ? "⌘," : "Ctrl+,"}
           </span>
         </a>
       </footer>

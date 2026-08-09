@@ -1,8 +1,8 @@
 # AnyLeft 剩了么
 
-A macOS **menu-bar app** that tracks how much of your subscription quota is left
+A macOS **menu-bar** and Windows **system-tray app** that tracks how much of your subscription quota is left
 across LLM providers — Claude, ChatGPT, GLM, Kimi, MiniMax, Gemini, Grok, Cursor,
-DeepSeek. Click the menu-bar icon to see each provider's **5-hour** and/or **weekly**
+DeepSeek. Click the status icon to see each provider's **5-hour** and/or **weekly**
 usage at a glance.
 
 Built with **Tauri v2 + React/Vite**, with a **Rust native bridge** for state,
@@ -11,11 +11,11 @@ persistence, and OS integration. UI implemented from the `AnyLeft.dc.html` and
 
 ## Screens
 
-- **Panel** — the menu-bar dropdown. Provider rows sorted by pressure (highest
+- **Panel** — the menu-bar/system-tray dropdown. Provider rows sorted by pressure (highest
   usage first), with the peak percentage shown next to the clock.
 - **Settings** — connected accounts (enable/disable per provider), an add-account
-  flow (pick provider → API Key or browser login), and preferences (menu-bar
-  percentage, near-limit alert, launch at login, summon shortcut ⌘⇧U).
+  flow (pick provider → API Key or browser login), and preferences (status-icon
+  percentage, near-limit alert, launch at login, summon shortcut ⌘⇧U / Ctrl+Shift+U).
 
 ## Tech stack
 
@@ -24,7 +24,7 @@ persistence, and OS integration. UI implemented from the `AnyLeft.dc.html` and
 | Desktop shell | Tauri v2 (tray icon, transparent windows, global shortcut, autostart) |
 | Frontend | React 18 + Vite 5 + TypeScript |
 | Native bridge | Rust — commands, settings persistence, keychain, pluggable providers |
-| Secrets | OS keychain via the `keyring` crate (keys never touch disk or the UI) |
+| Secrets | macOS Keychain / Windows Credential Manager via `keyring` (keys never touch disk or the UI) |
 
 ## Project layout
 
@@ -50,8 +50,8 @@ any-left/
         ├── catalog.rs         # static provider catalog
         ├── secrets.rs         # keychain-backed API keys
         ├── providers/         # UsageProvider trait + real provider implementations
-        ├── tray.rs            # menu-bar icon, live %, panel positioning
-        └── windows.rs         # show/hide helpers
+        ├── tray.rs            # status icon, menu, cross-platform positioning
+        └── windows.rs         # macOS NSPanel / Windows window helpers
 ```
 
 ## Running
@@ -60,14 +60,24 @@ Prerequisites: Node 18+, pnpm, and the Rust toolchain (`rustup`).
 
 ```bash
 pnpm install
-pnpm app:dev      # tauri dev — launches the menu-bar app
+pnpm app:dev      # tauri dev — launches the status-bar/tray app
 ```
 
 Build a distributable:
 
 ```bash
-pnpm app:build    # tauri build — produces a .app / .dmg
+pnpm app:build    # tauri build — produces the platform-native app/bundle
 ```
+
+Build when needed and install locally:
+
+```bash
+pnpm app:install           # macOS: /Applications; Windows: install + launch
+pnpm app:install --latest  # force a fresh build first
+```
+
+On Windows, run this from PowerShell or Command Prompt rather than WSL. The
+script prefers the current-version NSIS installer and falls back to MSI.
 
 Preview just the UI in a browser (uses the in-memory mock backend, no Rust):
 
@@ -81,10 +91,9 @@ pnpm dev
 
 The frontend only ever talks to the Rust bridge through the typed helpers in
 `src/api/bridge.ts`. Each mutating command validates its input, builds a **new**
-settings value (nothing is mutated in place), persists it to
-`~/Library/Application Support/com.voosil.anyleft/settings.json`, refreshes the
-menu-bar number, and returns the fresh settings so the UI renders from a single
-source of truth.
+settings value (nothing is mutated in place), persists it to the platform app
+config directory, refreshes the status icon, and returns the fresh settings so
+the UI renders from a single source of truth.
 
 Every provider id resolves through an async `UsageProvider` trait, so real vendor
 integrations drop in per provider without touching the commands or UI:
@@ -126,7 +135,8 @@ pub trait UsageProvider: Send + Sync {
 Claude and ChatGPT endpoints follow the
 [OpenUsage](https://github.com/robinebers/openusage) project. Kimi follows the
 CodexBar Kimi provider notes. MiniMax follows the `minimax-status` CLI endpoint.
-macOS prompts for keychain access on first read.
+macOS may prompt for Keychain access on first read; Windows API keys use
+Credential Manager.
 
 When a provider can't be read (not logged in, network error, or **not yet
 integrated** for the other catalog entries), that row shows a real **failure
@@ -139,12 +149,15 @@ To add a real integration, implement `UsageProvider` (reading an API key with
 `secrets::get_key` where relevant) and register it in
 `ProviderRegistry::with_defaults`.
 
-Successful reads are cached for 60s (and shared with the menu-bar number) to keep
+Successful reads are cached for 60s (and shared with the status icon) to keep
 the panel snappy and avoid hammering rate-limited endpoints — "refresh" bypasses
 the cache; failures are not cached, so they retry on the next open.
 
 ## Notes
 
-- The app runs as a macOS *accessory* — menu bar only, no Dock icon.
-- API keys are stored in the login keychain under the service `com.voosil.anyleft`.
-- Closing the settings window hides it; the app keeps running in the menu bar.
+- On macOS the app runs as an *accessory* — menu bar only, no Dock icon.
+- On Windows the app runs from the notification area; left-click opens the panel
+  above the taskbar and right-click opens its menu.
+- API keys are stored under the service `com.voosil.anyleft` in Keychain or
+  Credential Manager.
+- Closing the settings window hides it; the app keeps running through the status icon.

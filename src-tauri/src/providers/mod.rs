@@ -17,6 +17,7 @@ pub mod kimi;
 pub mod minimax;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 
@@ -35,6 +36,15 @@ pub struct ProviderContext {
 pub trait UsageProvider: Send + Sync {
     /// Fetch the current usage for the given connected account.
     async fn fetch(&self, ctx: &ProviderContext, account: &Account) -> AppResult<Usage>;
+}
+
+/// Resolve the current user's home directory on both Unix and Windows without
+/// adding another dependency. Windows GUI processes normally expose
+/// `USERPROFILE`, while shells and Unix expose `HOME`.
+pub(crate) fn home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
 }
 
 /// Title-case a raw subscription id ("max", "max_20x", "plus") into a display

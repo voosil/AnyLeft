@@ -1,7 +1,7 @@
 [package]
 name = "anyleft"
 version = "0.1.3"
-description = "AnyLeft 剩了么 — track LLM subscription quota usage from the macOS menu bar."
+description = "AnyLeft 剩了么 — track LLM subscription quota usage from the macOS menu bar or Windows system tray."
 authors = ["AnyLeft"]
 edition = "2021"
 rust-version = "1.80"
@@ -17,18 +17,25 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
-tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
 tauri-plugin-opener = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-keyring = { version = "3", features = ["apple-native"] }
+# Cargo only compiles the native store for the active target; enabling both
+# features lets the same manifest use Keychain on macOS and Credential Manager
+# on Windows.
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 chrono = "0.4.45"
 tokio = { version = "1", features = ["rt", "sync"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# NSPanel is a macOS-only implementation detail. Windows uses the regular
+# Tauri window fallback in `src/windows.rs`.
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
 
 [features]
 # Kept for parity with the Tauri template; production builds enable this.

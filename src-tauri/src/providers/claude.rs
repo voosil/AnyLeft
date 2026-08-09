@@ -19,6 +19,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::Usage;
 use crate::settings::Account;
 
+#[cfg(target_os = "macos")]
 const KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
 const CREDENTIALS_FILE: &str = ".claude/.credentials.json";
 const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
@@ -232,8 +233,7 @@ fn parse_oauth(text: &str) -> Option<OAuth> {
 }
 
 fn read_file_oauth() -> Option<OAuth> {
-    let home = std::env::var_os("HOME")?;
-    let path = std::path::Path::new(&home).join(CREDENTIALS_FILE);
+    let path = super::home_dir()?.join(CREDENTIALS_FILE);
     let text = std::fs::read_to_string(path).ok()?;
     parse_oauth(&text)
 }

@@ -5,8 +5,6 @@
 //! MiniMax returns `*_remaining_percent` values, while AnyLeft stores used
 //! percentages, so the provider converts each window with `100 - remaining`.
 
-use std::path::Path;
-
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -135,8 +133,7 @@ fn env_token() -> Option<String> {
 }
 
 fn config_token() -> Option<String> {
-    let home = std::env::var_os("HOME")?;
-    let path = Path::new(&home).join(CONFIG_FILE);
+    let path = super::home_dir()?.join(CONFIG_FILE);
     let text = std::fs::read_to_string(path).ok()?;
     let config: MinimaxConfig = serde_json::from_str(&text).ok()?;
     config

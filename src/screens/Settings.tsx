@@ -223,9 +223,9 @@ export function Settings() {
             background: color.inner,
           }}
         >
-          <PrefRow title="唤出面板快捷键" subtitle="从任意位置呼出菜单栏面板" divider>
+          <PrefRow title="唤出面板快捷键" subtitle="从任意位置呼出状态栏面板" divider>
             <span style={{ display: "inline-flex", gap: 4 }}>
-              <Kbd>⌘</Kbd>
+              <Kbd>{navigator.userAgent.includes("Mac") ? "⌘" : "Ctrl"}</Kbd>
               <Kbd>⇧</Kbd>
               <Kbd>U</Kbd>
             </span>
