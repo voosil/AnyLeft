@@ -35,6 +35,15 @@ const CATALOG: CatalogProvider[] = [
     tint: "rgba(95,127,88,.16)",
   },
   {
+    id: "opencode-go",
+    name: "OpenCode",
+    company: "Anomaly",
+    mono: "OC",
+    plan: "Go",
+    accent: "#6772E5",
+    tint: "rgba(103,114,229,.14)",
+  },
+  {
     id: "glm",
     name: "GLM",
     company: "Zhipu",
@@ -104,6 +113,7 @@ const PREVIEW_USAGE: Record<string, { fiveHour: number; weekly: number }> = {
   claude: { fiveHour: 42, weekly: 68 },
   kimi: { fiveHour: 70, weekly: 10 },
   minimax: { fiveHour: 27, weekly: 14 },
+  "opencode-go": { fiveHour: 9, weekly: 3 },
 };
 
 /** Preview-only: API credit balance for pay-as-you-go providers. */
@@ -128,7 +138,7 @@ const NEAR_LIMIT = 85;
 const DYNAMIC_PLAN_PROVIDERS = new Set(["claude", "gpt"]);
 
 let settings: AppSettings = {
-  accounts: ["claude", "gpt", "kimi", "minimax", "deepseek"].map((id) => ({
+  accounts: ["claude", "gpt", "kimi", "minimax", "deepseek", "opencode-go"].map((id) => ({
     accountId: id,
     providerId: id,
     label: null,

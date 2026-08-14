@@ -5,8 +5,8 @@
 //! window is used?" so real integrations drop in per provider without touching
 //! the commands or UI.
 //!
-//! Real integrations today: `claude`, `gpt` (ChatGPT/Codex), `kimi`, and
-//! `minimax`. They read local credentials and call each provider's usage
+//! Real integrations today: `claude`, `gpt` (ChatGPT/Codex), `kimi`, `minimax`,
+//! and `opencode-go`. They read local credentials and call each provider's usage
 //! endpoint — there is no mock data. Any other id reports a clear "not yet
 //! integrated" error that the panel surfaces per row.
 
@@ -15,6 +15,7 @@ pub mod codex;
 pub mod deepseek;
 pub mod kimi;
 pub mod minimax;
+pub mod opencode_go;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -87,6 +88,10 @@ impl ProviderRegistry {
         providers.insert("deepseek".to_string(), Box::new(deepseek::DeepseekProvider::new()));
         providers.insert("kimi".to_string(), Box::new(kimi::KimiProvider::new()));
         providers.insert("minimax".to_string(), Box::new(minimax::MinimaxProvider::new()));
+        providers.insert(
+            "opencode-go".to_string(),
+            Box::new(opencode_go::OpenCodeGoProvider::new()),
+        );
         ProviderRegistry { providers }
     }
 

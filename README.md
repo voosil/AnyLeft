@@ -1,8 +1,8 @@
 # AnyLeft 剩了么
 
 A macOS **menu-bar** and Windows **system-tray app** that tracks how much of your subscription quota is left
-across LLM providers — Claude, ChatGPT, GLM, Kimi, MiniMax, Gemini, Grok, Cursor,
-DeepSeek. Click the status icon to see each provider's **5-hour** and/or **weekly**
+across LLM providers — Claude, ChatGPT, OpenCode, GLM, Kimi, MiniMax, Gemini,
+Grok, Cursor, DeepSeek. Click the status icon to see each provider's **5-hour** and/or **weekly**
 usage at a glance.
 
 Built with **Tauri v2 + React/Vite**, with a **Rust native bridge** for state,
@@ -106,7 +106,7 @@ pub trait UsageProvider: Send + Sync {
 }
 ```
 
-**There is no mock data.** Four providers are real integrations:
+**There is no mock data.** Five providers are real integrations:
 
 - **Claude** (`providers/claude.rs`) — reads the local **Claude Code** OAuth login
   (macOS keychain `Claude Code-credentials`, `~/.claude/.credentials.json`, or
@@ -119,6 +119,12 @@ pub trait UsageProvider: Send + Sync {
   `GET https://chatgpt.com/backend-api/wham/usage`, and maps
   `rate_limit.secondary_window.used_percent` → **WEEK**.
   *(ChatGPT no longer exposes a separate 5-hour window.)*
+- **OpenCode Go** (`providers/opencode_go.rs`) — reads the Go API key from the
+  AnyLeft keychain entry, `OPENCODE_GO_API_KEY`, or the **OpenCode CLI**'s
+  `auth.json` (`$XDG_DATA_HOME/opencode/auth.json`, `~/.local/share/opencode/auth.json`),
+  calls `GET https://opencode.ai/zen/go/v1/usage`, and maps
+  `usage.rolling.percent` → **5H**, `usage.weekly.percent` → **WEEK**.
+  *(The monthly window is not surfaced — the panel has no month column.)*
 - **Kimi For Coding** (`providers/kimi.rs`) — reads a Kimi Code API key from the
   AnyLeft keychain entry or `KIMI_CODE_API_KEY`, calls
   `GET https://api.kimi.com/coding/v1/usages`, and maps the weekly `usage`

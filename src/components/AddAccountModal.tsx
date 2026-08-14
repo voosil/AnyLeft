@@ -9,6 +9,7 @@ import type { AppSettings, AuthMethod, CatalogProvider } from "../types";
 const LOGIN_URLS: Record<string, string> = {
   claude: "https://claude.ai/login",
   gpt: "https://chatgpt.com/",
+  "opencode-go": "https://opencode.ai/auth",
   glm: "https://open.bigmodel.cn/",
   kimi: "https://www.kimi.com/code/console",
   minimax: "https://platform.minimaxi.com/",
