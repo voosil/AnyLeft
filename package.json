@@ -1,7 +1,7 @@
 {
   "name": "any-left",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "AnyLeft 剩了么 — a macOS menu-bar and Windows system-tray app that tracks subscription quota usage across LLM providers.",
   "scripts": {
