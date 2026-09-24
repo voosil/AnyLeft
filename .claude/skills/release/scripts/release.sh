@@ -101,6 +101,9 @@ git tag -a "v$VERSION" -m "v$VERSION"
 git push origin main "v$VERSION"
 
 # Step 5-6 — rebuild, install to /Applications, and launch.
+# CI may be set to an arbitrary value in agent shells; the tauri CLI maps it to
+# its boolean --ci flag and rejects anything but true/false.
+export CI=true
 pnpm app:install --latest
 open /Applications/AnyLeft.app
 
