@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { mkdtempSync } from "node:fs";
 import test from "node:test";
 
-import { findWindowsInstaller, windowsInstallPlan } from "./install.mjs";
+import { findWindowsInstaller, pnpmInvocation, windowsInstallPlan } from "./install.mjs";
 
 function bundle(root, type, name) {
   const directory = join(root, "release", "bundle", type);
@@ -49,4 +49,32 @@ test("windowsInstallPlan configures a quiet MSI reinstall", () => {
     "/norestart",
   ]);
   assert.deepEqual(plan.acceptedExitCodes, [0, 3010]);
+});
+
+test("pnpmInvocation re-enters pnpm through a script entry", () => {
+  const invocation = pnpmInvocation(
+    { npm_execpath: "/opt/pnpm/pnpm.cjs" },
+    "darwin",
+    () => true,
+  );
+  assert.deepEqual(invocation, {
+    command: process.execPath,
+    prefix: ["/opt/pnpm/pnpm.cjs"],
+  });
+});
+
+test("pnpmInvocation ignores a native launcher as npm_execpath", () => {
+  // pnpm 12 points npm_execpath at a native binary in its tool directory; Node
+  // cannot load it, so the pnpm on PATH has to be used instead.
+  const invocation = pnpmInvocation(
+    { npm_execpath: "/Users/x/Library/pnpm/.tools/pnpm/12.1.0/pnpm" },
+    "darwin",
+    () => true,
+  );
+  assert.deepEqual(invocation, { command: "pnpm", prefix: [] });
+});
+
+test("pnpmInvocation falls back to the pnpm on PATH", () => {
+  assert.deepEqual(pnpmInvocation({}, "darwin"), { command: "pnpm", prefix: [] });
+  assert.deepEqual(pnpmInvocation({}, "win32"), { command: "pnpm.cmd", prefix: [] });
 });

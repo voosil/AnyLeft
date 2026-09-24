@@ -58,14 +58,30 @@ function run(command, args, options = {}) {
 }
 
 function runPnpm(args) {
-  // npm_execpath points at pnpm's JS entry when this script was started by
-  // `pnpm app:install`; invoking it through Node avoids `.cmd`/shell quoting
-  // differences between Windows and macOS.
-  const pnpmEntry = process.env.npm_execpath;
-  if (pnpmEntry && existsSync(pnpmEntry)) {
-    return run(process.execPath, [pnpmEntry, ...args]);
+  const { command, prefix } = pnpmInvocation();
+  return run(command, [...prefix, ...args]);
+}
+
+/**
+ * How to re-enter pnpm, given the environment the caller ran under.
+ *
+ * npm_execpath points at pnpm's own entry when this script was started by
+ * `pnpm app:install`, and going through Node avoids `.cmd`/shell quoting
+ * differences between Windows and macOS — that entry is a script (`pnpm.cjs`).
+ * Recent pnpm versions instead point it at a native launcher binary, which Node
+ * cannot load (it fails parsing the Mach-O header), so only a script entry may
+ * be invoked through Node; otherwise fall back to the pnpm on `PATH`.
+ */
+export function pnpmInvocation(
+  env = process.env,
+  platform = process.platform,
+  exists = existsSync,
+) {
+  const entry = env.npm_execpath;
+  if (entry && /\.(c?js|mjs)$/i.test(entry) && exists(entry)) {
+    return { command: process.execPath, prefix: [entry] };
   }
-  return run(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args);
+  return { command: platform === "win32" ? "pnpm.cmd" : "pnpm", prefix: [] };
 }
 
 function build() {
