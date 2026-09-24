@@ -154,6 +154,7 @@ let settings: AppSettings = {
     shortcut: "CommandOrControl+Shift+U",
     accent: "#C96442",
   },
+  firstLaunchDone: true,
 };
 
 const meta = (id: string) => CATALOG.find((p) => p.id === id);

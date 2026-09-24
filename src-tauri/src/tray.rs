@@ -141,37 +141,23 @@ fn toggle_panel_at(app: &AppHandle, event_rect: Option<Rect>) {
 fn position_panel(app: &AppHandle, window: &WebviewWindow, event_rect: Option<Rect>) {
     let size = window.outer_size().unwrap_or(FALLBACK_PANEL);
 
+    let monitors = window.available_monitors().unwrap_or_default();
+
     // The click event has the freshest icon bounds on Windows. The tray query
     // keeps global-shortcut positioning working when there is no click event.
-    let tray_rect = event_rect.or_else(|| {
-        app.tray_by_id(TRAY_ID)
-            .and_then(|tray| tray.rect().ok().flatten())
-    });
+    let anchor = event_rect
+        .or_else(|| {
+            app.tray_by_id(TRAY_ID)
+                .and_then(|tray| tray.rect().ok().flatten())
+        })
+        .and_then(|rect| tray_anchor(rect, &monitors));
 
-    let monitors = window.available_monitors().unwrap_or_default();
-    let mut target_monitor = None;
-
-    if let Some(rect) = &tray_rect {
-        for m in &monitors {
-            let scale = m.scale_factor();
-            let p = rect.position.to_physical::<f64>(scale);
-            let m_pos = m.position();
-            let m_size = m.size();
-            let m_x = m_pos.x as f64;
-            let m_y = m_pos.y as f64;
-            let m_w = m_size.width as f64;
-            let m_h = m_size.height as f64;
-
-            if p.x >= m_x && p.x <= m_x + m_w && p.y >= m_y && p.y <= m_y + m_h {
-                target_monitor = Some(m.clone());
-                break;
-            }
-        }
-    }
-
-    let monitor = target_monitor
+    let monitor = anchor
+        .as_ref()
+        .map(|(_, monitor)| monitor.clone())
         .or_else(|| window.current_monitor().ok().flatten())
         .or_else(|| window.primary_monitor().ok().flatten());
+
 
     let (work_area, scale) = match monitor.as_ref() {
         Some(m) => {
@@ -191,7 +177,7 @@ fn position_panel(app: &AppHandle, window: &WebviewWindow, event_rect: Option<Re
 
     let margin = EDGE_MARGIN * scale;
 
-    let tray_bounds = tray_rect.map(|rect| {
+    let tray_bounds = anchor.map(|(rect, _)| {
         let pos = rect.position.to_physical::<f64>(scale);
         let size = rect.size.to_physical::<f64>(scale);
         Bounds::new(pos.x, pos.y, size.width, size.height)
@@ -200,6 +186,45 @@ fn position_panel(app: &AppHandle, window: &WebviewWindow, event_rect: Option<Re
     let (x, y) = panel_position(size, tray_bounds, work_area, margin);
 
     let _ = window.set_position(PhysicalPosition::new(x.round(), y.round()));
+}
+
+/// The tray icon's reported rect, paired with the monitor it sits on — `None`
+/// when that rect cannot anchor the panel.
+///
+/// Until the OS lays a freshly created status item out, it reports a zero-sized
+/// rect in a screen corner (0,2160 with size 68×0 physical, measured on a 4K
+/// display). Read as icon bounds that anchors the panel to the far corner instead
+/// of the menu bar, so such a rect counts as "no icon bounds known" and the panel
+/// falls back to the work area's top-right corner.
+fn tray_anchor(rect: Rect, monitors: &[tauri::Monitor]) -> Option<(Rect, tauri::Monitor)> {
+    if !rect_has_area(&rect) {
+        return None;
+    }
+
+    monitor_containing(&rect, monitors).map(|monitor| (rect, monitor))
+}
+
+/// Whether a reported tray rect is bigger than nothing. The size is only ever
+/// compared against zero, so the unit it is expressed in does not matter.
+fn rect_has_area(rect: &Rect) -> bool {
+    let size = rect.size.to_physical::<f64>(1.0);
+    size.width > 0.0 && size.height > 0.0
+}
+
+/// The monitor whose bounds contain the tray icon's position, if any. `None`
+/// means the rect is unusable — a status item the OS has not placed yet — rather
+/// than that the icon sits on no screen.
+fn monitor_containing(rect: &Rect, monitors: &[tauri::Monitor]) -> Option<tauri::Monitor> {
+    monitors.iter().find_map(|m| {
+        let p = rect.position.to_physical::<f64>(m.scale_factor());
+        let pos = m.position();
+        let size = m.size();
+        let inside = p.x >= pos.x as f64
+            && p.x <= pos.x as f64 + size.width as f64
+            && p.y >= pos.y as f64
+            && p.y <= pos.y as f64 + size.height as f64;
+        inside.then(|| m.clone())
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -280,6 +305,25 @@ mod tests {
     use super::*;
 
     const PANEL: PhysicalSize<u32> = PhysicalSize::new(340, 360);
+
+    #[test]
+    fn rejects_the_rect_of_a_status_item_the_os_has_not_laid_out() {
+        // Measured on a 4K macOS display: just after the icon is created, the
+        // rect comes back as 68×0 sitting at the screen's bottom-left. Treated as
+        // icon bounds it would place the panel in the corner opposite the menu
+        // bar, so it has to read as "no icon bounds known".
+        let not_laid_out = Rect {
+            position: PhysicalPosition::new(0, 2160).into(),
+            size: PhysicalSize::new(68, 0).into(),
+        };
+        assert!(!rect_has_area(&not_laid_out));
+
+        let laid_out = Rect {
+            position: PhysicalPosition::new(3400, 0).into(),
+            size: PhysicalSize::new(48, 48).into(),
+        };
+        assert!(rect_has_area(&laid_out));
+    }
 
     #[test]
     fn opens_below_a_top_menu_bar() {

@@ -70,4 +70,9 @@ export interface Preferences {
 export interface AppSettings {
   accounts: Account[];
   preferences: Preferences;
+  /**
+   * Native bookkeeping, not shown in the UI: false only on a fresh install,
+   * until the app has revealed its main interface once.
+   */
+  firstLaunchDone: boolean;
 }

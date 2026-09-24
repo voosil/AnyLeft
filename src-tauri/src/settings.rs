@@ -97,6 +97,18 @@ impl Default for Preferences {
 pub struct AppSettings {
     pub accounts: Vec<Account>,
     pub preferences: Preferences,
+    /// False only on a brand-new install, until the first-launch reveal has
+    /// happened — the main window opening once, see `lib.rs`. A file written
+    /// before this field existed belongs to an install that has been opened
+    /// already, so it parses as `true` and gets no reveal.
+    #[serde(default = "first_launch_done_default")]
+    pub first_launch_done: bool,
+}
+
+/// Fallback for [`AppSettings::first_launch_done`] on a persisted file that omits
+/// it — an install predating the field, which is therefore not a fresh one.
+fn first_launch_done_default() -> bool {
+    true
 }
 
 impl Default for AppSettings {
@@ -107,6 +119,9 @@ impl Default for AppSettings {
                 .map(|id| Account::connected_default(id))
                 .collect(),
             preferences: Preferences::default(),
+            // `Default` is what a missing settings file yields, i.e. a fresh
+            // install, which still owes the first-launch reveal.
+            first_launch_done: false,
         }
     }
 }
@@ -147,6 +162,7 @@ impl AppSettings {
         Self {
             accounts,
             preferences: self.preferences,
+            first_launch_done: self.first_launch_done,
         }
     }
 
@@ -181,6 +197,7 @@ impl AppSettings {
         Self {
             accounts,
             preferences: self.preferences.clone(),
+            first_launch_done: self.first_launch_done,
         }
     }
 
@@ -194,6 +211,7 @@ impl AppSettings {
                 .cloned()
                 .collect(),
             preferences: self.preferences.clone(),
+            first_launch_done: self.first_launch_done,
         }
     }
 
@@ -215,6 +233,7 @@ impl AppSettings {
                 })
                 .collect(),
             preferences: self.preferences.clone(),
+            first_launch_done: self.first_launch_done,
         }
     }
 
@@ -223,6 +242,18 @@ impl AppSettings {
         Self {
             accounts: self.accounts.clone(),
             preferences,
+            first_launch_done: self.first_launch_done,
+        }
+    }
+
+    /// Record that the first-launch reveal has happened, so every later launch —
+    /// the launch-at-login one included — stays in the menu bar. Returns a new
+    /// value.
+    pub fn with_first_launch_done(&self) -> Self {
+        Self {
+            accounts: self.accounts.clone(),
+            preferences: self.preferences.clone(),
+            first_launch_done: true,
         }
     }
 }
@@ -275,6 +306,27 @@ mod tests {
         assert_eq!(claude.account_id, "claude");
         assert!(!claude.enabled);
         assert_eq!(claude.auth_method, AuthMethod::Login);
+        // The file predates `firstLaunchDone`, so this install is not a fresh one
+        // and must not trigger the first-launch reveal.
+        assert!(settings.first_launch_done);
+    }
+
+    #[test]
+    fn only_a_fresh_install_owes_the_first_launch_reveal() {
+        // No settings file yet: `Default` is what `load` falls back to.
+        let fresh = AppSettings::default();
+        assert!(!fresh.first_launch_done);
+        // Marking it done is one-way, so a second launch stays in the menu bar.
+        assert!(fresh.with_first_launch_done().first_launch_done);
+    }
+
+    #[test]
+    fn first_launch_flag_survives_a_save_and_reload() {
+        let settings = AppSettings::default().with_first_launch_done();
+        let json = serde_json::to_string(&settings).expect("serialize settings");
+        // The key the TypeScript mirror (`src/types.ts`) declares.
+        assert!(json.contains(r#""firstLaunchDone":true"#));
+        assert!(parse(&json).first_launch_done);
     }
 
     #[test]

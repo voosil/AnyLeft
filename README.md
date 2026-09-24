@@ -164,6 +164,12 @@ the cache; failures are not cached, so they retry on the next open.
 - On macOS the app runs as an *accessory* — menu bar only, no Dock icon.
 - On Windows the app runs from the notification area; left-click opens the panel
   above the taskbar and right-click opens its menu.
+- A fresh install opens the settings window once on first launch, so the app
+  never starts silently; every launch after that (launch at login included) stays
+  in the menu bar.
+- Only one instance runs. Starting AnyLeft again — from Finder, a shortcut, or
+  the command line — brings the running instance's window back to the front and
+  the second process exits, so there is never a second taskbar entry or status icon.
 - API keys are stored under the service `com.voosil.anyleft` in Keychain or
   Credential Manager.
 - Closing the settings window hides it; the app keeps running through the status icon.
