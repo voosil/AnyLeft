@@ -18,9 +18,13 @@ use crate::models::Usage;
 use crate::secrets;
 use crate::settings::Account;
 
-const USAGE_URL: &str = "https://opencode.ai/zen/go/v1/usage";
+const USAGE_URL: &str = "https://opencode.ai/inference/go/v1/usage";
 /// The key under which the OpenCode CLI stores the Go plan's API key.
 const CLI_AUTH_KEY: &str = "opencode-go";
+/// Stable session header required by the OpenCode Go gateway since 2026-09-05.
+/// Without it every request gets `400 MissingSessionID`. The value just needs
+/// to be a consistent, non-empty string; we use the app name.
+const SESSION_ID: &str = "anyleft";
 
 #[derive(Deserialize)]
 struct UsageBody {
@@ -58,6 +62,7 @@ impl UsageProvider for OpenCodeGoProvider {
             .bearer_auth(api_key.trim())
             .header("Accept", "application/json")
             .header("User-Agent", "AnyLeft")
+            .header("x-opencode-session", SESSION_ID)
             .send()
             .await?;
 

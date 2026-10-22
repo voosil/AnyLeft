@@ -122,7 +122,7 @@ pub trait UsageProvider: Send + Sync {
 - **OpenCode Go** (`providers/opencode_go.rs`) — reads the Go API key from the
   AnyLeft keychain entry, `OPENCODE_GO_API_KEY`, or the **OpenCode CLI**'s
   `auth.json` (`$XDG_DATA_HOME/opencode/auth.json`, `~/.local/share/opencode/auth.json`),
-  calls `GET https://opencode.ai/zen/go/v1/usage`, and maps
+  calls `GET https://opencode.ai/inference/go/v1/usage`, and maps
   `usage.rolling.percent` → **5H**, `usage.weekly.percent` → **WEEK**.
   *(The monthly window is not surfaced — the panel has no month column.)*
 - **Kimi For Coding** (`providers/kimi.rs`) — reads a Kimi Code API key from the
