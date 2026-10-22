@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "AnyLeft",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "com.voosil.anyleft",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -35,7 +35,7 @@
       },
       {
         "label": "settings",
-        "title": "AnyLeft · 设置",
+        "title": "AnyLeft \u00b7 \u8bbe\u7f6e",
         "url": "index.html?window=settings",
         "width": 560,
         "height": 690,
@@ -54,7 +54,7 @@
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "Track LLM subscription quota usage from a status icon.",
-    "longDescription": "AnyLeft 剩了么 is a macOS menu-bar and Windows system-tray app that tracks how much of your subscription quota is left across LLM providers (Claude, ChatGPT, GLM, Kimi, MiniMax and more).",
+    "longDescription": "AnyLeft \u5269\u4e86\u4e48 is a macOS menu-bar and Windows system-tray app that tracks how much of your subscription quota is left across LLM providers (Claude, ChatGPT, GLM, Kimi, MiniMax and more).",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
